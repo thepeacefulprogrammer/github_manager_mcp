@@ -49,14 +49,25 @@ def test_project_structure():
 def test_configuration_files():
     """Test that configuration files exist and are valid"""
     import os
-
-    import toml  # type: ignore
+    import sys
 
     # Check pyproject.toml exists and is valid
     assert os.path.exists("pyproject.toml"), "pyproject.toml should exist"
 
-    with open("pyproject.toml", "r") as f:
-        config = toml.load(f)
+    # Use tomllib (Python 3.11+) or fallback to toml
+    if sys.version_info >= (3, 11):
+        import tomllib
+
+        with open("pyproject.toml", "rb") as f:
+            config = tomllib.load(f)
+    else:
+        try:
+            import toml  # type: ignore
+
+            with open("pyproject.toml", "r") as f:
+                config = toml.load(f)
+        except ImportError:
+            pytest.skip("toml library not available and Python < 3.11")
 
     assert "project" in config, "pyproject.toml should have [project] section"
     assert "name" in config["project"], "Project should have a name"
