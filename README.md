@@ -1,22 +1,29 @@
-# GitHub Manager MCP Server
+# GitHub Project Manager MCP Server
 
-An open-source Model Context Protocol (MCP) server that provides seamless GitHub project management capabilities for AI assistants and applications.
+An open-source Model Context Protocol (MCP) server that provides automated GitHub project management capabilities for AI assistants and applications, specifically designed to integrate with PRD-driven development workflows.
 
 ## 🚀 Overview
 
-The GitHub Manager MCP Server enables AI assistants to interact with GitHub repositories, issues, pull requests, and project management features through a standardized protocol. This server bridges the gap between AI applications and GitHub's powerful project management ecosystem.
+The GitHub Project Manager MCP Server enables AI assistants to automate GitHub Projects v2 management through a structured workflow hierarchy (Project → PRDs → Tasks → Subtasks). This server bridges the gap between AI-driven development workflows and GitHub's project management ecosystem, allowing AI agents like Claude/Cursor to automatically update project status as work progresses.
 
 ## ✨ Features
 
-- **Repository Management**: Create, clone, and manage GitHub repositories
-- **Issue Tracking**: Create, update, close, and search issues
-- **Pull Request Management**: Create, review, merge, and manage pull requests
-- **Project Boards**: Interact with GitHub Projects (v2) for advanced project management
-- **Team Collaboration**: Manage assignees, reviewers, and team permissions
-- **Webhook Integration**: Real-time notifications and event handling
-- **Search & Analytics**: Advanced repository and code search capabilities
-- **Branch Management**: Create, merge, and delete branches
-- **Release Management**: Create and manage releases and tags
+- **Automated Project Management**: AI agents can create and manage GitHub Projects v2 boards automatically
+- **PRD-Driven Workflow**: Supports hierarchical project structure with PRDs as top-level planning documents
+- **Task & Subtask Management**: Create, update, and track tasks and subtasks within PRDs
+- **Status Column Management**: Support for workflow status columns (Backlog, This Sprint, Up Next, In Progress, Done)
+- **Seamless AI Integration**: Designed specifically for AI agent automation of project management tasks
+- **Real-time Updates**: Automatically update GitHub Projects as development work progresses
+- **Progress Tracking**: Query project health and progress through AI agents
+
+## 🎯 Use Case
+
+This MCP server is designed for developers who:
+- Use PRD-driven development workflows
+- Want AI agents to automatically manage their GitHub project status
+- Follow structured task breakdown methodologies (PRD → Tasks → Subtasks)
+- Prefer automation over manual project management
+- Work with AI assistants like Claude Desktop or Cursor
 
 ## 🛠️ Installation
 
@@ -24,7 +31,7 @@ The GitHub Manager MCP Server enables AI assistants to interact with GitHub repo
 
 - Python 3.8+
 - GitHub Personal Access Token with appropriate permissions
-- Git installed on your system
+- Access to GitHub Projects v2
 
 ### Quick Start
 
@@ -47,7 +54,7 @@ The GitHub Manager MCP Server enables AI assistants to interact with GitHub repo
 
 4. **Run the server**
    ```bash
-   python -m github_manager_mcp
+   python -m github_project_manager_mcp
    ```
 
 ## 🔧 Configuration
@@ -66,9 +73,8 @@ LOG_LEVEL=INFO
 ### GitHub Token Permissions
 
 Your GitHub Personal Access Token should have the following scopes:
-- `repo` - Full repository access
 - `project` - Project management access
-- `admin:org` - Organization administration (if managing organization repos)
+- `repo` - Repository access (for Projects v2)
 - `user` - User profile access
 
 ## 📋 Usage
@@ -78,57 +84,62 @@ Your GitHub Personal Access Token should have the following scopes:
 ```python
 from mcp import Client
 
-# Connect to the GitHub Manager MCP Server
+# Connect to the GitHub Project Manager MCP Server
 client = Client("http://localhost:3000")
 
-# Example: Create a new issue
-response = client.call("create_issue", {
-    "repository": "owner/repo-name",
-    "title": "Bug: Application crashes on startup",
-    "body": "Detailed description of the issue...",
-    "labels": ["bug", "high-priority"],
-    "assignees": ["username"]
+# Example: Create a new project
+response = client.call("create_project", {
+    "name": "Q1 2024 Features",
+    "description": "Major feature development for Q1",
+    "repository": "owner/repo-name"
+})
+
+# Example: Add a PRD to the project
+response = client.call("add_prd_to_project", {
+    "project_id": "project_123",
+    "prd_title": "User Authentication System",
+    "prd_description": "Implement secure user authentication",
+    "status": "This Sprint"
 })
 ```
 
 ### Available MCP Tools
 
-#### Repository Management
-- `create_repository` - Create a new repository
-- `get_repository` - Get repository information
-- `list_repositories` - List user/organization repositories
-- `fork_repository` - Fork a repository
-
-#### Issue Management
-- `create_issue` - Create a new issue
-- `update_issue` - Update existing issue
-- `close_issue` - Close an issue
-- `list_issues` - List repository issues
-- `search_issues` - Search issues across repositories
-
-#### Pull Request Management
-- `create_pull_request` - Create a new pull request
-- `update_pull_request` - Update existing pull request
-- `merge_pull_request` - Merge a pull request
-- `list_pull_requests` - List repository pull requests
-
 #### Project Management
-- `create_project` - Create a new project board
-- `update_project` - Update project settings
-- `add_item_to_project` - Add issues/PRs to project
-- `move_project_item` - Move items between columns
+- `create_project` - Create a new GitHub Project v2 board
+- `list_projects` - List all available projects
+- `get_project_details` - Get detailed project information
+- `archive_project` - Archive a completed project
+
+#### PRD Management
+- `add_prd_to_project` - Add a new PRD to a project
+- `list_prds` - List PRDs within a project
+- `update_prd_status` - Update PRD status and details
+- `move_prd_to_column` - Move PRD between status columns
+
+#### Task Management
+- `create_task` - Create a new task under a PRD
+- `list_tasks` - List tasks within a PRD or project
+- `update_task` - Update task details and status
+- `move_task_to_column` - Move task between status columns
+
+#### Subtask Management
+- `add_subtask` - Add subtask to a task
+- `list_subtasks` - List subtasks within a task
+- `complete_subtask` - Mark subtask as complete
+- `get_task_progress` - Get completion status of task and subtasks
 
 ## 🏗️ Architecture
 
 ```
 ┌─────────────────┐    ┌─────────────────┐    ┌─────────────────┐
-│   MCP Client    │────│  GitHub Manager │────│   GitHub API    │
-│   (AI Agent)    │    │    MCP Server   │    │                 │
+│   AI Agent      │────│  GitHub Project │────│   GitHub API    │
+│ (Claude/Cursor) │    │   Manager MCP   │    │   Projects v2   │
 └─────────────────┘    └─────────────────┘    └─────────────────┘
                                 │
                        ┌─────────────────┐
-                       │   Local Storage │
-                       │   (Cache/Logs)  │
+                       │   PRD Workflow  │
+                       │   Integration   │
                        └─────────────────┘
 ```
 
@@ -170,12 +181,18 @@ response = client.call("create_issue", {
 ```
 github_manager_mcp/
 ├── src/
-│   ├── github_manager_mcp/
+│   ├── github_project_manager_mcp/
 │   │   ├── __init__.py
 │   │   ├── server.py          # Main MCP server implementation
-│   │   ├── github_client.py   # GitHub API client wrapper
+│   │   ├── github_client.py   # GitHub GraphQL API client
 │   │   ├── handlers/          # MCP tool handlers
+│   │   │   ├── project_handlers.py
+│   │   │   ├── prd_handlers.py
+│   │   │   ├── task_handlers.py
+│   │   │   └── subtask_handlers.py
+│   │   ├── models/            # Data models
 │   │   └── utils/             # Utility functions
+├── tasks/                     # PRD and task files
 ├── tests/                     # Test suite
 ├── docs/                      # Documentation
 ├── examples/                  # Usage examples
@@ -183,6 +200,46 @@ github_manager_mcp/
 ├── requirements-dev.txt       # Development dependencies
 └── README.md
 ```
+
+## 🤝 Contributing
+
+We welcome contributions! Please see our [Contributing Guide](CONTRIBUTING.md) for details.
+
+### Development Workflow
+
+1. Fork the repository
+2. Create a feature branch (`git checkout -b feature/amazing-feature`)
+3. Make your changes
+4. Add tests for your changes
+5. Ensure all tests pass (`pytest`)
+6. Commit your changes (`git commit -m 'Add amazing feature'`)
+7. Push to your branch (`git push origin feature/amazing-feature`)
+8. Open a Pull Request
+
+## 📚 Roadmap
+
+- [x] Create comprehensive PRD for GitHub Project Manager
+- [ ] Generate detailed task breakdown from PRD
+- [ ] Implement core MCP server infrastructure
+- [ ] Develop GitHub GraphQL API integration
+- [ ] Create project management handlers
+- [ ] Implement PRD management capabilities
+- [ ] Add task and subtask management
+- [ ] Integrate with AI workflow automation
+- [ ] Add comprehensive testing suite
+- [ ] Create documentation and examples
+
+## 🎯 Vision
+
+Our goal is to create the most seamless integration between AI-driven development workflows and GitHub project management, enabling developers to focus on building great software while AI agents handle the administrative overhead of project tracking and status updates.
+
+## 📄 License
+
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+
+## 💬 Community
+
+* GitHub Discussions
 
 ## 🤝 Contributing
 
@@ -219,10 +276,6 @@ We welcome contributions! Please see our [Contributing Guide](CONTRIBUTING.md) f
 - Use environment variables for all configuration
 - Follow GitHub's API rate limiting guidelines
 - Report security vulnerabilities privately to maintainers
-
-## 📄 License
-
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
 ## 🙏 Acknowledgments
 
