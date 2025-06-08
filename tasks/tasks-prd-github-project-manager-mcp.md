@@ -3,8 +3,8 @@
 - `src/github_project_manager_mcp/__init__.py` - Main package initialization and version info
 - `src/github_project_manager_mcp/server.py` - Core MCP server implementation and startup logic
 - `src/github_project_manager_mcp/server.test.py` - Unit tests for MCP server functionality
-- `src/github_project_manager_mcp/github_client.py` - GitHub GraphQL API client wrapper
-- `src/github_project_manager_mcp/github_client.test.py` - Unit tests for GitHub API client
+- `src/github_project_manager_mcp/github_client.py` - GitHub GraphQL API client with async support and error handling
+- `tests/unit/test_github_client.py` - Unit tests for GitHub API client with TDD approach
 - `src/github_project_manager_mcp/handlers/project_handlers.py` - MCP tool handlers for project management operations
 - `src/github_project_manager_mcp/handlers/project_handlers.test.py` - Unit tests for project handlers
 - `src/github_project_manager_mcp/handlers/prd_handlers.py` - MCP tool handlers for PRD management operations
@@ -56,7 +56,7 @@
   - [x] 1.9 Set up CI/CD workflow files for automated testing
 
 - [ ] 2.0 Implement GitHub GraphQL API Integration
-  - [ ] 2.1 Create GitHub client class with GraphQL endpoint configuration
+  - [x] 2.1 Create GitHub client class with GraphQL endpoint configuration
   - [ ] 2.2 Implement authentication handling using Personal Access Tokens
   - [ ] 2.3 Create GraphQL query builder utilities for Projects v2 API
   - [ ] 2.4 Implement error handling and retry logic for API calls
