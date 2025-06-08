@@ -36,4 +36,4 @@ updates:
       include: "scope"
     labels:
       - "dependencies"
-      - "github-actions" 
+      - "github-actions"

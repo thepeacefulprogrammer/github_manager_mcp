@@ -2,8 +2,10 @@
 pytest configuration and fixtures specific to unit tests.
 """
 
+from unittest.mock import Mock
+
 import pytest
-from unittest.mock import Mock, MagicMock
+
 
 @pytest.fixture
 def mock_github_client():
@@ -13,6 +15,7 @@ def mock_github_client():
     client.mutate = Mock()
     return client
 
+
 @pytest.fixture
 def mock_mcp_server():
     """Provide a mock MCP server for unit tests."""
@@ -20,6 +23,7 @@ def mock_mcp_server():
     server.list_tools = Mock()
     server.call_tool = Mock()
     return server
+
 
 @pytest.fixture
 def mock_logger():
@@ -29,4 +33,4 @@ def mock_logger():
     logger.warning = Mock()
     logger.error = Mock()
     logger.debug = Mock()
-    return logger 
+    return logger

@@ -2,9 +2,10 @@
 pytest configuration and fixtures specific to integration tests.
 """
 
-import pytest
 import os
-from unittest.mock import Mock
+
+import pytest
+
 
 @pytest.fixture(scope="session")
 def integration_github_token():
@@ -18,7 +19,8 @@ def integration_github_token():
         pytest.skip("GITHUB_INTEGRATION_TOKEN not set, skipping integration tests")
     return token
 
-@pytest.fixture(scope="session") 
+
+@pytest.fixture(scope="session")
 def test_github_repo():
     """
     Provide test GitHub repository for integration tests.
@@ -27,13 +29,15 @@ def test_github_repo():
     """
     return os.getenv("GITHUB_TEST_REPO", "test-user/test-repo")
 
+
 @pytest.fixture
 def integration_test_project():
     """Provide test project data for integration tests."""
     return {
         "name": "Integration Test Project",
-        "description": "Project created during integration testing"
+        "description": "Project created during integration testing",
     }
+
 
 @pytest.fixture(autouse=True)
 def cleanup_test_data():
@@ -45,4 +49,4 @@ def cleanup_test_data():
     yield
     # Cleanup logic would go here
     # For now, just a placeholder
-    pass 
+    pass

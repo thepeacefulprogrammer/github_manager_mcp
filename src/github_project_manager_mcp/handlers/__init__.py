@@ -1,8 +1,11 @@
 """
 MCP Tool Handlers
 
-This module contains the MCP tool handlers for various GitHub project management operations.
+This module contains the MCP tool handlers for various GitHub project
+management operations.
 """
+
+from typing import List
 
 # Import handlers when they're available
 # try:
@@ -14,6 +17,6 @@ This module contains the MCP tool handlers for various GitHub project management
 #     # Handler modules not yet implemented
 #     pass
 
-__all__ = [
+__all__: List[str] = [
     # Will be populated as handlers are implemented
-] 
+]

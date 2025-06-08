@@ -159,4 +159,4 @@ config.json
 config.ini
 settings.ini
 local_config.py
-secrets.py 
+secrets.py

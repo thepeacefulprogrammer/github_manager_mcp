@@ -28,11 +28,11 @@ The system implements a hierarchical project structure (Project → PRDs → Tas
 
 ### Project Management
 1. The system must allow creation of new GitHub Projects v2 boards
-2. The system must allow listing of existing GitHub Projects 
+2. The system must allow listing of existing GitHub Projects
 3. The system must allow retrieval of project details and current status
 4. The system must support project deletion and archiving
 
-### PRD Management  
+### PRD Management
 5. The system must allow adding PRDs as high-level items to a GitHub Project
 6. The system must allow listing all PRDs within a project
 7. The system must allow updating PRD status and details
@@ -136,4 +136,4 @@ The system implements a hierarchical project structure (Project → PRDs → Tas
 3. **Notifications**: Should the system support notifications when status changes occur?
 4. **Backup/Export**: Should we include functionality to export project data for backup purposes?
 5. **Concurrent Access**: How should we handle potential conflicts if the user manually updates GitHub Projects while the AI agent is working?
-6. **Custom Fields**: Should we support additional custom fields beyond the basic PRD/Task/Subtask structure? 
+6. **Custom Fields**: Should we support additional custom fields beyond the basic PRD/Task/Subtask structure?

@@ -12,4 +12,4 @@ python-dotenv>=1.0.0
 pydantic>=2.0.0
 
 # CLI interface support
-click>=8.0.0 
+click>=8.0.0

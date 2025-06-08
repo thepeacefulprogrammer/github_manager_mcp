@@ -4,6 +4,8 @@ Data Models
 This module contains the data models for GitHub project management entities.
 """
 
+from typing import List
+
 # Import models when they're available
 # try:
 #     from .project import *
@@ -14,6 +16,6 @@ This module contains the data models for GitHub project management entities.
 #     # Model modules not yet implemented
 #     pass
 
-__all__ = [
+__all__: List[str] = [
     # Will be populated as models are implemented
-] 
+]

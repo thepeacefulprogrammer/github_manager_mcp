@@ -293,9 +293,9 @@ We welcome contributions! Please see our [Contributing Guide](CONTRIBUTING.md) f
 ---
 
 <div align="center">
-  
+
 **⭐ If this project helps you, please give it a star! ⭐**
 
 Made with ❤️ by [The Peaceful Programmer](https://github.com/thepeacefulprogrammer)
 
-</div> 
+</div>
