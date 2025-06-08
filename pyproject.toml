@@ -43,6 +43,7 @@ dev = [
     "flake8>=6.0.0",
     "mypy>=1.0.0",
     "pre-commit>=3.0.0",
+    "toml>=0.10.0",
 ]
 
 [project.urls]
@@ -66,10 +67,12 @@ python_files = ["test_*.py", "*_test.py", "*test*.py"]
 python_classes = ["Test*"]
 python_functions = ["test_*"]
 addopts = "-v --tb=short --strict-markers"
+asyncio_mode = "auto"
 markers = [
     "slow: marks tests as slow (deselect with '-m \"not slow\"')",
     "integration: marks tests as integration tests",
     "unit: marks tests as unit tests",
+    "asyncio: marks tests as async (deselect with '-m \"not asyncio\"')",
 ]
 
 [tool.black]
