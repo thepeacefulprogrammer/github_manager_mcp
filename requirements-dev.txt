@@ -1,0 +1,19 @@
+# Development dependencies for GitHub Project Manager MCP Server
+# Include core dependencies
+-r requirements.txt
+
+# Testing framework and extensions
+pytest>=7.0.0
+pytest-cov>=4.0.0
+pytest-asyncio>=0.21.0
+
+# Code formatting and linting
+black>=23.0.0
+isort>=5.12.0
+flake8>=6.0.0
+
+# Type checking
+mypy>=1.0.0
+
+# Development workflow tools
+pre-commit>=3.0.0 
