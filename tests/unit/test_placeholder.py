@@ -50,7 +50,7 @@ def test_configuration_files():
     """Test that configuration files exist and are valid"""
     import os
 
-    import toml
+    import toml  # type: ignore
 
     # Check pyproject.toml exists and is valid
     assert os.path.exists("pyproject.toml"), "pyproject.toml should exist"
