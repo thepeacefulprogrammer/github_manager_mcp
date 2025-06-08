@@ -23,6 +23,8 @@
 - `tests/unit/test_auth.py` - Unit tests for authentication utilities with TDD approach
 - `src/github_project_manager_mcp/utils/query_builder.py` - GraphQL query builder for Projects v2 API with pagination and field selection
 - `tests/unit/test_query_builder.py` - Unit tests for GraphQL query builder with TDD approach
+- `src/github_project_manager_mcp/utils/error_handling.py` - Error handling and retry logic with exponential backoff and circuit breaker patterns
+- `tests/unit/test_error_handling.py` - Unit tests for error handling utilities with TDD approach
 - `src/github_project_manager_mcp/utils/validation.py` - Input validation utilities
 - `src/github_project_manager_mcp/utils/logging.py` - Logging configuration and utilities
 - `src/github_project_manager_mcp/utils/__init__.py` - Utils package initialization
@@ -62,7 +64,7 @@
   - [x] 2.1 Create GitHub client class with GraphQL endpoint configuration
   - [x] 2.2 Implement authentication handling using Personal Access Tokens
   - [x] 2.3 Create GraphQL query builder utilities for Projects v2 API
-  - [ ] 2.4 Implement error handling and retry logic for API calls
+  - [x] 2.4 Implement error handling and retry logic for API calls
   - [ ] 2.5 Add rate limiting compliance and request throttling
   - [ ] 2.6 Create GraphQL mutations for project creation and updates
   - [ ] 2.7 Implement pagination handling for large result sets
