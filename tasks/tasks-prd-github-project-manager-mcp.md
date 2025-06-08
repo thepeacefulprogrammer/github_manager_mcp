@@ -32,6 +32,7 @@
 - `.github/workflows/ci.yml` - GitHub Actions CI/CD pipeline for automated testing and code quality
 - `.github/workflows/dependabot.yml` - Automated dependency update workflow
 - `.github/dependabot.yml` - Dependabot configuration for dependency management
+- `.pre-commit-config.yaml` - Pre-commit hooks configuration for code quality enforcement
 
 ### Notes
 

@@ -29,7 +29,7 @@ This MCP server is designed for developers who:
 
 ### Prerequisites
 
-- Python 3.8+
+- Python 3.10+
 - GitHub Personal Access Token with appropriate permissions
 - Access to GitHub Projects v2
 
