@@ -19,7 +19,8 @@
 - `src/github_project_manager_mcp/models/subtask.py` - Data models for subtask entities
 - `src/github_project_manager_mcp/models/__init__.py` - Models package initialization
 - `src/github_project_manager_mcp/models/models.test.py` - Unit tests for data models
-- `src/github_project_manager_mcp/utils/auth.py` - GitHub authentication utilities
+- `src/github_project_manager_mcp/utils/auth.py` - GitHub authentication utilities with token validation and management
+- `tests/unit/test_auth.py` - Unit tests for authentication utilities with TDD approach
 - `src/github_project_manager_mcp/utils/validation.py` - Input validation utilities
 - `src/github_project_manager_mcp/utils/logging.py` - Logging configuration and utilities
 - `src/github_project_manager_mcp/utils/__init__.py` - Utils package initialization
@@ -57,7 +58,7 @@
 
 - [ ] 2.0 Implement GitHub GraphQL API Integration
   - [x] 2.1 Create GitHub client class with GraphQL endpoint configuration
-  - [ ] 2.2 Implement authentication handling using Personal Access Tokens
+  - [x] 2.2 Implement authentication handling using Personal Access Tokens
   - [ ] 2.3 Create GraphQL query builder utilities for Projects v2 API
   - [ ] 2.4 Implement error handling and retry logic for API calls
   - [ ] 2.5 Add rate limiting compliance and request throttling
