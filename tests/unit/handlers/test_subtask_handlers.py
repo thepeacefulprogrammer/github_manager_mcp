@@ -16,6 +16,7 @@ from src.github_project_manager_mcp.handlers.subtask_handlers import (
     delete_subtask_handler,
     list_subtasks_handler,
     update_subtask_handler,
+    complete_subtask_handler,
 )
 
 
@@ -1335,4 +1336,365 @@ class TestDeleteSubtaskHandler:
             )
 
         assert result.isError
+        assert "Network timeout" in result.content[0].text
+
+
+class TestCompleteSubtaskHandler:
+    """Test cases for the complete_subtask_handler function."""
+
+    @pytest.mark.asyncio
+    async def test_complete_subtask_success(self):
+        """Test successful subtask completion."""
+        mock_client = AsyncMock()
+
+        # Mock successful query response for getting subtask content
+        mock_query_response = {
+            "node": {
+                "content": {
+                    "title": "Test Subtask",
+                    "body": """Test subtask description
+
+## Subtask Metadata
+- **Type:** Subtask
+- **Parent Task ID:** PVTI_parent123
+- **Order:** 1
+- **Status:** Incomplete
+
+---
+*This subtask was created via GitHub Project Manager MCP*""",
+                }
+            }
+        }
+
+        # Mock successful update response
+        mock_update_response = {
+            "updateIssue": {
+                "issue": {
+                    "id": "PVTI_test123",
+                    "title": "Test Subtask",
+                    "body": """Test subtask description
+
+## Subtask Metadata
+- **Type:** Subtask
+- **Parent Task ID:** PVTI_parent123
+- **Order:** 1
+- **Status:** Complete
+
+---
+*This subtask was created via GitHub Project Manager MCP*""",
+                    "updatedAt": "2024-01-01T10:30:00Z",
+                }
+            }
+        }
+
+        mock_client.query.return_value = mock_query_response
+        mock_client.mutate.return_value = mock_update_response
+
+        with patch(
+            "src.github_project_manager_mcp.handlers.subtask_handlers.get_github_client",
+            return_value=mock_client,
+        ):
+            result = await complete_subtask_handler(
+                {
+                    "subtask_item_id": "PVTI_test123",
+                }
+            )
+
+        assert not result.isError
+        assert "Subtask completed successfully!" in result.content[0].text
+        assert "Test Subtask" in result.content[0].text
+        assert "Status:** Complete" in result.content[0].text
+
+    @pytest.mark.asyncio
+    async def test_complete_subtask_already_complete(self):
+        """Test completing a subtask that is already complete."""
+        mock_client = AsyncMock()
+
+        # Mock response with already complete subtask
+        mock_query_response = {
+            "node": {
+                "content": {
+                    "title": "Already Complete Subtask",
+                    "body": """Test subtask description
+
+## Subtask Metadata
+- **Type:** Subtask
+- **Parent Task ID:** PVTI_parent123
+- **Order:** 1
+- **Status:** Complete
+
+---
+*This subtask was created via GitHub Project Manager MCP*""",
+                }
+            }
+        }
+
+        mock_client.query.return_value = mock_query_response
+
+        with patch(
+            "src.github_project_manager_mcp.handlers.subtask_handlers.get_github_client",
+            return_value=mock_client,
+        ):
+            result = await complete_subtask_handler(
+                {
+                    "subtask_item_id": "PVTI_test123",
+                }
+            )
+
+        assert not result.isError
+        assert "Subtask is already complete" in result.content[0].text
+        assert "Already Complete Subtask" in result.content[0].text
+
+    @pytest.mark.asyncio
+    async def test_complete_subtask_missing_subtask_item_id(self):
+        """Test error handling when subtask_item_id is missing."""
+        result = await complete_subtask_handler({})
+
+        assert result.isError
+        assert "subtask_item_id is required" in result.content[0].text
+
+    @pytest.mark.asyncio
+    async def test_complete_subtask_empty_subtask_item_id(self):
+        """Test error handling when subtask_item_id is empty."""
+        result = await complete_subtask_handler(
+            {
+                "subtask_item_id": "   ",
+            }
+        )
+
+        assert result.isError
+        assert "subtask_item_id is required" in result.content[0].text
+
+    @pytest.mark.asyncio
+    async def test_complete_subtask_github_client_not_initialized(self):
+        """Test error handling when GitHub client is not initialized."""
+        with patch(
+            "src.github_project_manager_mcp.handlers.subtask_handlers.get_github_client",
+            return_value=None,
+        ):
+            result = await complete_subtask_handler(
+                {
+                    "subtask_item_id": "PVTI_test123",
+                }
+            )
+
+        assert result.isError
+        assert "GitHub client not initialized" in result.content[0].text
+
+    @pytest.mark.asyncio
+    async def test_complete_subtask_content_not_found(self):
+        """Test error handling when subtask content is not found."""
+        mock_client = AsyncMock()
+        mock_response = {"node": None}
+        mock_client.query.return_value = mock_response
+
+        with patch(
+            "src.github_project_manager_mcp.handlers.subtask_handlers.get_github_client",
+            return_value=mock_client,
+        ):
+            result = await complete_subtask_handler(
+                {
+                    "subtask_item_id": "PVTI_invalid",
+                }
+            )
+
+        assert result.isError
+        assert "Subtask content not found" in result.content[0].text
+
+    @pytest.mark.asyncio
+    async def test_complete_subtask_invalid_content_format(self):
+        """Test error handling when subtask content format is invalid."""
+        mock_client = AsyncMock()
+        mock_response = {
+            "node": {
+                "content": {
+                    "title": "Invalid Subtask",
+                    "body": "This is not a valid subtask format",
+                }
+            }
+        }
+        mock_client.query.return_value = mock_response
+
+        with patch(
+            "src.github_project_manager_mcp.handlers.subtask_handlers.get_github_client",
+            return_value=mock_client,
+        ):
+            result = await complete_subtask_handler(
+                {
+                    "subtask_item_id": "PVTI_invalid",
+                }
+            )
+
+        assert result.isError
+        assert "Invalid subtask content format" in result.content[0].text
+
+    @pytest.mark.asyncio
+    async def test_complete_subtask_graphql_query_error(self):
+        """Test error handling when GraphQL query fails."""
+        mock_client = AsyncMock()
+        mock_client.query.side_effect = Exception(
+            "GraphQL query error: Invalid item ID"
+        )
+
+        with patch(
+            "src.github_project_manager_mcp.handlers.subtask_handlers.get_github_client",
+            return_value=mock_client,
+        ):
+            result = await complete_subtask_handler(
+                {
+                    "subtask_item_id": "PVTI_invalid",
+                }
+            )
+
+        assert result.isError
+        assert "Failed to fetch subtask content" in result.content[0].text
+        assert "GraphQL query error: Invalid item ID" in result.content[0].text
+
+    @pytest.mark.asyncio
+    async def test_complete_subtask_update_mutation_error(self):
+        """Test error handling when update mutation fails."""
+        mock_client = AsyncMock()
+
+        # Mock successful query response
+        mock_query_response = {
+            "node": {
+                "content": {
+                    "title": "Test Subtask",
+                    "body": """Test subtask description
+
+## Subtask Metadata
+- **Type:** Subtask
+- **Parent Task ID:** PVTI_parent123
+- **Order:** 1
+- **Status:** Incomplete
+
+---
+*This subtask was created via GitHub Project Manager MCP*""",
+                }
+            }
+        }
+
+        mock_client.query.return_value = mock_query_response
+        mock_client.mutate.side_effect = Exception(
+            "GraphQL mutation error: Permission denied"
+        )
+
+        with patch(
+            "src.github_project_manager_mcp.handlers.subtask_handlers.get_github_client",
+            return_value=mock_client,
+        ):
+            result = await complete_subtask_handler(
+                {
+                    "subtask_item_id": "PVTI_test123",
+                }
+            )
+
+        assert result.isError
+        assert "Failed to complete subtask" in result.content[0].text
+        assert "GraphQL mutation error: Permission denied" in result.content[0].text
+
+    @pytest.mark.asyncio
+    async def test_complete_subtask_no_update_response(self):
+        """Test error handling when update mutation returns no response."""
+        mock_client = AsyncMock()
+
+        # Mock successful query response
+        mock_query_response = {
+            "node": {
+                "content": {
+                    "title": "Test Subtask",
+                    "body": """Test subtask description
+
+## Subtask Metadata
+- **Type:** Subtask
+- **Parent Task ID:** PVTI_parent123
+- **Order:** 1
+- **Status:** Incomplete
+
+---
+*This subtask was created via GitHub Project Manager MCP*""",
+                }
+            }
+        }
+
+        mock_client.query.return_value = mock_query_response
+        mock_client.mutate.return_value = None
+
+        with patch(
+            "src.github_project_manager_mcp.handlers.subtask_handlers.get_github_client",
+            return_value=mock_client,
+        ):
+            result = await complete_subtask_handler(
+                {
+                    "subtask_item_id": "PVTI_test123",
+                }
+            )
+
+        assert result.isError
+        assert (
+            "No response data received from completion operation"
+            in result.content[0].text
+        )
+
+    @pytest.mark.asyncio
+    async def test_complete_subtask_invalid_update_response_format(self):
+        """Test error handling when update response format is unexpected."""
+        mock_client = AsyncMock()
+
+        # Mock successful query response
+        mock_query_response = {
+            "node": {
+                "content": {
+                    "title": "Test Subtask",
+                    "body": """Test subtask description
+
+## Subtask Metadata
+- **Type:** Subtask
+- **Parent Task ID:** PVTI_parent123
+- **Order:** 1
+- **Status:** Incomplete
+
+---
+*This subtask was created via GitHub Project Manager MCP*""",
+                }
+            }
+        }
+
+        mock_client.query.return_value = mock_query_response
+        mock_client.mutate.return_value = {"unexpected": "format"}
+
+        with patch(
+            "src.github_project_manager_mcp.handlers.subtask_handlers.get_github_client",
+            return_value=mock_client,
+        ):
+            result = await complete_subtask_handler(
+                {
+                    "subtask_item_id": "PVTI_test123",
+                }
+            )
+
+        assert result.isError
+        assert (
+            "Invalid response format from completion operation"
+            in result.content[0].text
+        )
+
+    @pytest.mark.asyncio
+    async def test_complete_subtask_api_exception(self):
+        """Test error handling for general API exceptions."""
+        mock_client = AsyncMock()
+        mock_client.query.side_effect = RuntimeError("Network timeout")
+
+        with patch(
+            "src.github_project_manager_mcp.handlers.subtask_handlers.get_github_client",
+            return_value=mock_client,
+        ):
+            result = await complete_subtask_handler(
+                {
+                    "subtask_item_id": "PVTI_test123",
+                }
+            )
+
+        assert result.isError
+        assert "Failed to fetch subtask content" in result.content[0].text
         assert "Network timeout" in result.content[0].text

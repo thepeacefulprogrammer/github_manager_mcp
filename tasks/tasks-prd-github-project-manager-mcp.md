@@ -2,7 +2,7 @@
 
 - `src/github_project_manager_mcp/__init__.py` - Main package initialization and version info
 
-- `src/github_project_manager_mcp/mcp_server_fastmcp.py` - FastMCP-based server implementation for proper Cursor IDE integration with comprehensive debugging, async patterns, and complete project management tools (test_connection, create_project, list_projects, delete_project, get_project_details, update_project, list_prds_in_project, add_prd_to_project, update_prd, update_prd_status, delete_prd_from_project, create_task, list_tasks, update_task, delete_task, add_subtask, list_subtasks, update_subtask, delete_subtask) - **19 TOOLS IMPLEMENTED** ✅
+- `src/github_project_manager_mcp/mcp_server_fastmcp.py` - FastMCP-based server implementation for proper Cursor IDE integration with comprehensive debugging, async patterns, and complete project management tools (test_connection, create_project, list_projects, delete_project, get_project_details, update_project, list_prds_in_project, add_prd_to_project, update_prd, update_prd_status, delete_prd_from_project, create_task, list_tasks, update_task, delete_task, add_subtask, list_subtasks, update_subtask, delete_subtask, complete_subtask) - **20 TOOLS IMPLEMENTED** ✅
 
 - `src/github_project_manager_mcp/github_client.py` - GitHub GraphQL API client with async support and error handling
 - `tests/unit/test_github_client.py` - Unit tests for GitHub API client with TDD approach
@@ -13,7 +13,7 @@
 - `src/github_project_manager_mcp/handlers/prd_handlers.test.py` - Unit tests for PRD handlers
 - `src/github_project_manager_mcp/handlers/task_handlers.py` - MCP tool handlers for task management operations including create_task with parent PRD association, list_tasks with PRD filtering, update_task with comprehensive status and field updates, and delete_task with safety confirmation requirements - **COMPLETE TASK CRUD OPERATIONS** ✅ld management, parameter validation, task metadata management (priority, estimated hours), pagination support, and structured task description formatting with GitHub Projects v2 API integration
 - `tests/unit/handlers/test_task_handlers.py` - Unit tests for task handlers with comprehensive TDD test coverage for create_task, list_tasks, update_task, and delete_task functionality including validation, error handling, pagination, filtering, field updates, API integration, and safety confirmation requirements (42 total tests)
-- `src/github_project_manager_mcp/handlers/subtask_handlers.py` - MCP tool handlers for subtask management operations including add_subtask with comprehensive parameter validation, GitHub Projects v2 API integration, and task association
+- `src/github_project_manager_mcp/handlers/subtask_handlers.py` - MCP tool handlers for subtask management operations including add_subtask, list_subtasks, update_subtask, delete_subtask, and complete_subtask with comprehensive parameter validation, GitHub Projects v2 API integration, task association, completion tracking, and metadata management
 - `src/github_project_manager_mcp/handlers/subtask_handlers.test.py` - Unit tests for subtask handlers
 - `src/github_project_manager_mcp/handlers/status_column_handlers.py` - MCP tool handlers for status column (single select field) management operations including create_status_column, list_status_columns, update_status_column, delete_status_column, and get_status_column with comprehensive GitHub Projects v2 API integration
 - `tests/unit/handlers/test_status_column_handlers.py` - Unit tests for status column handlers with comprehensive TDD test coverage for all status column functionality including validation, error handling, and API integration (19 total tests)
@@ -24,6 +24,7 @@
 - `tests/unit/test_prd_model.py` - Unit tests for PRD data models with comprehensive TDD test coverage for all PRD functionality including validation, serialization, and GitHub item mapping
 - `src/github_project_manager_mcp/models/task.py` - Data models for Task entities including Task, TaskStatus, and TaskPriority classes with parent PRD relationship, time tracking, progress calculation, and comprehensive GitHub Projects v2 integration
 - `tests/unit/test_task_model.py` - Unit tests for Task data models with comprehensive TDD test coverage for Task functionality including validation, serialization, GitHub item mapping, parent PRD relationships, time tracking, and progress methods (19 total tests)
+- `tests/unit/handlers/test_subtask_handlers.py` - Unit tests for subtask handlers with comprehensive TDD test coverage for add_subtask, list_subtasks, update_subtask, delete_subtask, and complete_subtask functionality including validation, error handling, pagination, filtering, completion tracking, API integration, and safety confirmation requirements (59 total tests)
 - `tests/unit/test_subtask_model.py` - Unit tests for Subtask data models with comprehensive TDD test coverage for Subtask functionality including validation, serialization, checklist item mapping, completion tracking, ordering, GitHub integration, and status management methods (25 total tests)
 - `src/github_project_manager_mcp/models/subtask.py` - Data models for Subtask entities including Subtask, SubtaskStatus classes with checklist item structure, completion tracking, ordering, GitHub Projects v2 integration, and comprehensive validation and serialization methods
 - `src/github_project_manager_mcp/models/__init__.py` - Models package initialization with Project model exports
@@ -81,6 +82,7 @@
 - ✅ `list_subtasks` - **COMPLETE SUBTASK LISTING WITH FILTERING** (lists subtasks with parent task filtering and pagination)
 - ✅ `update_subtask` - **COMPLETE SUBTASK UPDATE FUNCTIONALITY** (updates subtask content, status, and order)
 - ✅ `delete_subtask` - **COMPLETE SUBTASK DELETION WITH SAFETY CONFIRMATION** (safely deletes subtasks with confirmation requirements)
+- ✅ `complete_subtask` - **CONVENIENT SUBTASK COMPLETION** (marks subtasks as complete with a single command and completion tracking)
 - ✅ GitHub Authentication - Working with .env token
 - ✅ GraphQL API - Successfully calling GitHub Projects v2 API
 
@@ -205,7 +207,7 @@ Following a systematic approach to ensure solid foundations:
   - [x] 4.11 Implement list_subtasks MCP tool handler for task-specific queries
   - [x] 4.12 Implement update_subtask MCP tool handler for subtask content and status updates
   - [x] 4.13 Implement delete_subtask MCP tool handler for subtask cleanup operations
-  - [ ] 4.14 Implement complete_subtask MCP tool handler with completion tracking
+  - [x] 4.14 Implement complete_subtask MCP tool handler with completion tracking
   - [ ] 4.15 Create hierarchical relationship management between PRDs, tasks, and subtasks
   - [ ] 4.16 Add validation logic for all PRD, task, and subtask operations
 
@@ -511,3 +513,59 @@ This brings subtask CRUD operations to **100% completion** (Create ✅, Read ✅
 - **Full GitHub Projects v2 Integration** with GraphQL API
 
 The implementation provides a complete project management solution with full CRUD capabilities across all hierarchical levels: Projects → PRDs → Tasks → Subtasks.
+
+## ✅ Task 4.14: Implement `complete_subtask` MCP Tool Handler [x]
+
+### 4.14.1: Write comprehensive unit tests for the `complete_subtask` handler [x]
+- **Status:** ✅ COMPLETED
+- **File:** `tests/unit/handlers/test_subtask_handlers.py`
+- **Details:** Added 12 comprehensive test cases for `TestCompleteSubtaskHandler` covering:
+  - Success scenarios with automatic status completion
+  - Already complete subtask handling (idempotent operation)
+  - Input validation (missing/empty subtask_item_id)
+  - Error handling (GitHub client not initialized, content not found, invalid format)
+  - GraphQL query/mutation error handling
+  - Response validation and API exceptions
+
+### 4.14.2: Implement the `complete_subtask_handler()` function [x]
+- **Status:** ✅ COMPLETED
+- **File:** `src/github_project_manager_mcp/handlers/subtask_handlers.py`
+- **Details:** Implemented comprehensive `complete_subtask_handler()` function with:
+  - Parameter validation for subtask_item_id
+  - Two-phase operation: query current status, then update if needed
+  - Automatic status change from "Incomplete" to "Complete"
+  - Idempotent behavior (safe to call on already complete subtasks)
+  - Metadata validation to ensure item is actually a subtask
+  - Reuse of existing helper functions for consistency
+
+### 4.14.3: Create GraphQL query helper for fetching subtask content [x]
+- **Status:** ✅ COMPLETED
+- **File:** `src/github_project_manager_mcp/handlers/subtask_handlers.py`
+- **Details:** Created `_build_get_subtask_content_query()` helper function:
+  - Uses GitHub Projects v2 node query with item ID
+  - Supports both DraftIssue and Issue content types
+  - Proper GraphQL string escaping via ProjectQueryBuilder
+  - Returns title and body for metadata extraction
+
+### 4.14.4: Register the `complete_subtask` tool in the MCP server [x]
+- **Status:** ✅ COMPLETED
+- **File:** `src/github_project_manager_mcp/mcp_server_fastmcp.py`
+- **Details:** Successfully registered the `complete_subtask` tool with:
+  - Simple parameter schema (only subtask_item_id required)
+  - Proper type definitions and descriptions
+  - Integration with FastMCP server
+  - Export in SUBTASK_TOOLS and SUBTASK_TOOL_HANDLERS
+  - All 424 tests passing (412 existing + 12 new)
+
+### Summary
+Task 4.14 is **COMPLETED** ✅. The complete_subtask MCP tool handler provides convenient one-click subtask completion functionality for GitHub Projects v2. Key features include:
+
+- **Convenience Method**: Simple one-parameter call to mark subtasks complete
+- **Idempotent Operation**: Safe to call multiple times on the same subtask
+- **Metadata Validation**: Ensures target item is actually a subtask before operating
+- **Status Tracking**: Automatically updates subtask metadata from "Incomplete" to "Complete"
+- **Two-Phase Operation**: Queries current state, then updates only if needed
+- **Comprehensive Error Handling**: Graceful handling of all edge cases and API errors
+- **Test Coverage**: 12 test cases covering all functionality with 100% pass rate
+
+This completes the Enhanced Subtask Management functionality, bringing the total tool count to **20 MCP Tools** with comprehensive test coverage of **424 total tests**! 🎉

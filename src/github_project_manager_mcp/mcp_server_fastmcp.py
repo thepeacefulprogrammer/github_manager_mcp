@@ -139,6 +139,7 @@ except ImportError as e:
 try:
     from github_project_manager_mcp.handlers.subtask_handlers import (
         add_subtask_handler,
+        complete_subtask_handler,
         delete_subtask_handler,
     )
     from github_project_manager_mcp.handlers.subtask_handlers import (
@@ -1068,6 +1069,36 @@ class GitHubProjectManagerMCPFastServer:
                 logger.error(f"Error in delete_subtask: {e}")
                 logger.error(f"Traceback: {traceback.format_exc()}")
                 return f'{{"success": false, "error": "Failed to delete subtask: {str(e)}"}}'
+
+        @self.mcp.tool()
+        async def complete_subtask(subtask_item_id: str) -> str:
+            """Mark a subtask as complete. This is a convenience method that automatically sets the subtask status to 'Complete' without requiring other parameters."""
+            logger.info(f"Complete subtask called: subtask_item_id={subtask_item_id}")
+
+            try:
+                await self._ensure_async_initialized()
+
+                if not self.github_client:
+                    return '{"success": false, "error": "GitHub client not initialized - check token configuration"}'
+
+                # Call the existing complete subtask handler
+                args = {
+                    "subtask_item_id": subtask_item_id,
+                }
+
+                result = await complete_subtask_handler(args)
+                logger.info(f"Complete subtask result: {result}")
+
+                # Extract text content from CallToolResult
+                if hasattr(result, "content") and result.content:
+                    return result.content[0].text
+                else:
+                    return str(result)
+
+            except Exception as e:
+                logger.error(f"Error in complete_subtask: {e}")
+                logger.error(f"Traceback: {traceback.format_exc()}")
+                return f'{{"success": false, "error": "Failed to complete subtask: {str(e)}"}}'
 
         # Log successful tool registration
         logger.info("Successfully registered all MCP tools with FastMCP")

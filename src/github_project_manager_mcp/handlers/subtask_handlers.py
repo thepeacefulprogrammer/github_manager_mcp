@@ -1233,6 +1233,243 @@ async def delete_subtask_handler(arguments: Dict[str, Any]) -> CallToolResult:
         )
 
 
+def _build_get_subtask_content_query(subtask_item_id: str) -> str:
+    """
+    Build GraphQL query to get subtask content by item ID.
+
+    Args:
+        subtask_item_id: GitHub Projects v2 item ID of the subtask
+
+    Returns:
+        GraphQL query string
+    """
+    query_builder = ProjectQueryBuilder()
+    escaped_item_id = query_builder._escape_string(subtask_item_id)
+
+    query = f"""
+query {{
+  node(id: {escaped_item_id}) {{
+    ... on ProjectV2Item {{
+      content {{
+        ... on DraftIssue {{
+          title
+          body
+        }}
+        ... on Issue {{
+          title
+          body
+        }}
+      }}
+    }}
+  }}
+}}
+""".strip()
+
+    return query
+
+
+async def complete_subtask_handler(arguments: Dict[str, Any]) -> CallToolResult:
+    """
+    Handle complete_subtask tool calls.
+
+    Marks a subtask as complete by updating its status in the subtask metadata.
+    This is a convenience method that automatically sets the status to "Complete"
+    without requiring other parameters.
+
+    Args:
+        arguments: Tool call arguments containing:
+            - subtask_item_id (required): ID of the subtask item to complete
+
+    Returns:
+        CallToolResult with operation results
+    """
+    try:
+        # Validate required parameters
+        subtask_item_id = arguments.get("subtask_item_id", "").strip()
+
+        if not subtask_item_id:
+            return CallToolResult(
+                content=[
+                    TextContent(
+                        type="text",
+                        text="Error: subtask_item_id is required to complete subtask",
+                    )
+                ],
+                isError=True,
+            )
+
+        # Check if GitHub client is initialized
+        client = get_github_client()
+        if not client:
+            return CallToolResult(
+                content=[
+                    TextContent(
+                        type="text",
+                        text="Error: GitHub client not initialized. Please call initialize_github_client first.",
+                    )
+                ],
+                isError=True,
+            )
+
+        # Get current subtask content to check status and retrieve metadata
+        query = _build_get_subtask_content_query(subtask_item_id)
+
+        try:
+            response = await client.query(query)
+        except Exception as e:
+            logger.error(f"Error fetching subtask content: {e}")
+            return CallToolResult(
+                content=[
+                    TextContent(
+                        type="text",
+                        text=f"Error: Failed to fetch subtask content: {str(e)}",
+                    )
+                ],
+                isError=True,
+            )
+
+        # Validate response
+        if not response or not response.get("node"):
+            return CallToolResult(
+                content=[
+                    TextContent(
+                        type="text",
+                        text="Error: Subtask content not found. The item may not exist or you may not have access to it.",
+                    )
+                ],
+                isError=True,
+            )
+
+        # Get content from response
+        node = response["node"]
+        content = node.get("content")
+        if not content:
+            return CallToolResult(
+                content=[
+                    TextContent(
+                        type="text",
+                        text="Error: Subtask content not found in response.",
+                    )
+                ],
+                isError=True,
+            )
+
+        current_title = content.get("title", "")
+        current_body = content.get("body", "")
+
+        # Validate this is actually a subtask by checking metadata
+        metadata = _parse_subtask_metadata(current_body)
+        if not metadata or metadata.get("type") != "Subtask":
+            return CallToolResult(
+                content=[
+                    TextContent(
+                        type="text",
+                        text="Error: Invalid subtask content format. This item does not appear to be a subtask.",
+                    )
+                ],
+                isError=True,
+            )
+
+        current_status = metadata.get("status", "Incomplete")
+
+        # Check if already complete
+        if current_status == "Complete":
+            return CallToolResult(
+                content=[
+                    TextContent(
+                        type="text",
+                        text=f"✅ **Subtask is already complete!**\n\n**Title:** {current_title}\n**Status:** {current_status}",
+                    )
+                ],
+                isError=False,
+            )
+
+        # Update status to Complete
+        updated_body = _update_subtask_metadata(
+            current_body,
+            new_status="Complete",
+        )
+
+        # Build and execute update mutation
+        mutation = _build_update_subtask_mutation(
+            subtask_item_id=subtask_item_id,
+            title=None,  # Keep existing title
+            body=updated_body,
+        )
+
+        try:
+            update_response = await client.mutate(mutation)
+        except Exception as e:
+            logger.error(f"Error completing subtask: {e}")
+            return CallToolResult(
+                content=[
+                    TextContent(
+                        type="text",
+                        text=f"Error: Failed to complete subtask: {str(e)}",
+                    )
+                ],
+                isError=True,
+            )
+
+        # Validate update response
+        if not update_response:
+            return CallToolResult(
+                content=[
+                    TextContent(
+                        type="text",
+                        text="Error: No response data received from completion operation",
+                    )
+                ],
+                isError=True,
+            )
+
+        # Parse update response
+        update_data = update_response.get("updateIssue", {})
+        if not update_data:
+            return CallToolResult(
+                content=[
+                    TextContent(
+                        type="text",
+                        text="Error: Invalid response format from completion operation",
+                    )
+                ],
+                isError=True,
+            )
+
+        updated_issue = update_data.get("issue", {})
+        updated_title = updated_issue.get("title", current_title)
+
+        # Build success response
+        result_lines = [
+            "✅ **Subtask completed successfully!**",
+            "",
+            f"**Title:** {updated_title}",
+            f"**Subtask ID:** {subtask_item_id}",
+            f"**Status:** Complete",
+            "",
+            "🎉 **Great job! This subtask is now marked as complete.**",
+        ]
+
+        result_text = "\n".join(result_lines)
+
+        return CallToolResult(
+            content=[TextContent(type="text", text=result_text)],
+            isError=False,
+        )
+
+    except Exception as e:
+        logger.error(f"Unexpected error in complete_subtask_handler: {e}")
+        return CallToolResult(
+            content=[
+                TextContent(
+                    type="text",
+                    text=f"Error: Unexpected error completing subtask: {str(e)}",
+                )
+            ],
+            isError=True,
+        )
+
+
 # Tool definitions
 ADD_SUBTASK_TOOL = Tool(
     name="add_subtask",
@@ -1354,12 +1591,28 @@ DELETE_SUBTASK_TOOL = Tool(
     },
 )
 
+COMPLETE_SUBTASK_TOOL = Tool(
+    name="complete_subtask",
+    description="Mark a subtask as complete. This is a convenience method that automatically sets the subtask status to 'Complete' without requiring other parameters.",
+    inputSchema={
+        "type": "object",
+        "properties": {
+            "subtask_item_id": {
+                "type": "string",
+                "description": "GitHub Projects v2 item ID of the subtask to complete (e.g., 'PVTI_kwDOA...')",
+            },
+        },
+        "required": ["subtask_item_id"],
+    },
+)
+
 # Tool exports
 SUBTASK_TOOLS = [
     ADD_SUBTASK_TOOL,
     LIST_SUBTASKS_TOOL,
     UPDATE_SUBTASK_TOOL,
     DELETE_SUBTASK_TOOL,
+    COMPLETE_SUBTASK_TOOL,
 ]
 
 SUBTASK_TOOL_HANDLERS = {
@@ -1367,4 +1620,5 @@ SUBTASK_TOOL_HANDLERS = {
     "list_subtasks": list_subtasks_handler,
     "update_subtask": update_subtask_handler,
     "delete_subtask": delete_subtask_handler,
+    "complete_subtask": complete_subtask_handler,
 }
