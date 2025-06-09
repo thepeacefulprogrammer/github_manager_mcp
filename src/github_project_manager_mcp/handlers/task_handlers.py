@@ -1340,6 +1340,230 @@ The task has been permanently removed from the project. This action cannot be un
         )
 
 
+async def complete_task_handler(arguments: Dict[str, Any]) -> CallToolResult:
+    """
+    Handle complete_task tool calls.
+
+    Marks a task as complete by setting its status to "Done". This is a
+    convenience method that provides a simple one-click completion for tasks.
+    The operation is idempotent - calling it on an already complete task
+    will return a success message without making changes.
+
+    Args:
+        arguments: Tool call arguments containing:
+            - task_item_id (required): GitHub project item ID of the task
+
+    Returns:
+        CallToolResult with operation results
+    """
+    try:
+        # Validate required parameters
+        task_item_id = arguments.get("task_item_id", "").strip()
+
+        if not task_item_id:
+            return CallToolResult(
+                content=[
+                    TextContent(
+                        type="text",
+                        text="Error: task_item_id is required",
+                    )
+                ],
+                isError=True,
+            )
+
+        # Get GitHub client
+        client = get_github_client()
+        if not client:
+            return CallToolResult(
+                content=[
+                    TextContent(
+                        type="text",
+                        text="Error: GitHub client not initialized",
+                    )
+                ],
+                isError=True,
+            )
+
+        # Get project item fields and current status
+        query_builder = ProjectQueryBuilder()
+        fields_query = query_builder.get_project_item_fields(task_item_id)
+        logger.info(f"Fetching project item fields for task: {task_item_id}")
+        fields_response = await client.query(fields_query)
+
+        # Check for GraphQL errors
+        if "errors" in fields_response:
+            error_messages = [error["message"] for error in fields_response["errors"]]
+            return CallToolResult(
+                content=[
+                    TextContent(
+                        type="text",
+                        text=f"Error: GraphQL errors occurred: {'; '.join(error_messages)}",
+                    )
+                ],
+                isError=True,
+            )
+
+        # Validate project item exists
+        if not fields_response.get("node"):
+            return CallToolResult(
+                content=[
+                    TextContent(
+                        type="text",
+                        text=f"Error: Task not found with ID: {task_item_id}",
+                    )
+                ],
+                isError=True,
+            )
+
+        project_item_data = fields_response["node"]
+        project_data = project_item_data["project"]
+        project_id = project_data["id"]
+
+        # Parse available fields and find current status
+        available_fields = {}
+        current_status = None
+
+        for field in project_data["fields"]["nodes"]:
+            # Skip empty field objects
+            if not field or "name" not in field:
+                continue
+            field_name = field["name"]
+            field_id = field["id"]
+            field_data_type = field.get("dataType", "")
+
+            if field_data_type == "SINGLE_SELECT":
+                field_options = {
+                    opt["name"]: opt["id"] for opt in field.get("options", [])
+                }
+                available_fields[field_name] = {
+                    "id": field_id,
+                    "type": "SINGLE_SELECT",
+                    "options": field_options,
+                }
+
+        # Find current status from field values
+        field_values = project_item_data.get("fieldValues", {}).get("nodes", [])
+        for field_value in field_values:
+            field = field_value.get("field", {})
+            if field.get("name") == "Status":
+                current_status = field_value.get("singleSelectOption", {}).get("name")
+                break
+
+        if "Status" not in available_fields:
+            return CallToolResult(
+                content=[
+                    TextContent(
+                        type="text",
+                        text="Error: Status field not found for this task",
+                    )
+                ],
+                isError=True,
+            )
+
+        # Check if already complete
+        if current_status == "Done":
+            result_text = f"""🎉 Task is already complete!
+
+**Task:** {task_item_id}
+**Status:** {current_status}
+
+No changes were made since the task is already marked as Done."""
+
+            return CallToolResult(
+                content=[TextContent(type="text", text=result_text)],
+                isError=False,
+            )
+
+        # Check if "Done" option exists
+        status_field = available_fields["Status"]
+        if "Done" not in status_field["options"]:
+            available_options = list(status_field["options"].keys())
+            return CallToolResult(
+                content=[
+                    TextContent(
+                        type="text",
+                        text=f"Error: 'Done' status option not found. Available options: {', '.join(available_options)}",
+                    )
+                ],
+                isError=True,
+            )
+
+        # Update status to "Done"
+        status_mutation = query_builder.update_project_item_field_value(
+            project_id=project_id,
+            item_id=task_item_id,
+            field_id=status_field["id"],
+            single_select_option_id=status_field["options"]["Done"],
+        )
+
+        logger.info(f"Completing task (setting status to 'Done'): {task_item_id}")
+        status_response = await client.mutate(status_mutation)
+
+        if not status_response:
+            return CallToolResult(
+                content=[
+                    TextContent(
+                        type="text",
+                        text="No response data received from completion operation",
+                    )
+                ],
+                isError=True,
+            )
+
+        if "errors" in status_response:
+            error_messages = [error["message"] for error in status_response["errors"]]
+            return CallToolResult(
+                content=[
+                    TextContent(
+                        type="text",
+                        text=f"Failed to complete task: {'; '.join(error_messages)}",
+                    )
+                ],
+                isError=True,
+            )
+
+        # Validate response format
+        update_data = status_response.get("updateProjectV2ItemFieldValue")
+        if not update_data:
+            return CallToolResult(
+                content=[
+                    TextContent(
+                        type="text",
+                        text="Invalid response format from completion operation",
+                    )
+                ],
+                isError=True,
+            )
+
+        # Build success response
+        result_text = f"""🎉 Task completed successfully!
+
+**Task:** {task_item_id}
+**Previous Status:** {current_status or 'Unknown'}
+**New Status:** Done
+
+The task has been marked as complete and is now ready for review or archival."""
+
+        logger.info(f"Task '{task_item_id}' completed successfully")
+
+        return CallToolResult(
+            content=[TextContent(type="text", text=result_text)],
+            isError=False,
+        )
+
+    except Exception as e:
+        logger.error(f"Error completing task: {e}", exc_info=True)
+        return CallToolResult(
+            content=[
+                TextContent(
+                    type="text",
+                    text=f"Failed to fetch task status: {str(e)}",
+                )
+            ],
+            isError=True,
+        )
+
+
 # Tool definitions
 CREATE_TASK_TOOL = Tool(
     name="create_task",
@@ -1483,12 +1707,28 @@ DELETE_TASK_TOOL = Tool(
     },
 )
 
+COMPLETE_TASK_TOOL = Tool(
+    name="complete_task",
+    description="Mark a task as complete. This is a convenience method that automatically sets the task status to 'Done' without requiring other parameters.",
+    inputSchema={
+        "type": "object",
+        "properties": {
+            "task_item_id": {
+                "type": "string",
+                "description": "GitHub project item ID of the task to complete",
+            },
+        },
+        "required": ["task_item_id"],
+    },
+)
+
 # Export lists for registration
 TASK_TOOLS: List[Tool] = [
     CREATE_TASK_TOOL,
     LIST_TASKS_TOOL,
     UPDATE_TASK_TOOL,
     DELETE_TASK_TOOL,
+    COMPLETE_TASK_TOOL,
 ]
 
 TASK_TOOL_HANDLERS: Dict[str, Any] = {
@@ -1496,4 +1736,5 @@ TASK_TOOL_HANDLERS: Dict[str, Any] = {
     "list_tasks": list_tasks_handler,
     "update_task": update_task_handler,
     "delete_task": delete_task_handler,
+    "complete_task": complete_task_handler,
 }

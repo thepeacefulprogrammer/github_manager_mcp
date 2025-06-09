@@ -18,6 +18,7 @@ from src.github_project_manager_mcp.handlers.task_handlers import (
     create_task_handler,
     get_github_client,
     list_tasks_handler,
+    complete_task_handler,
 )
 
 
@@ -1229,3 +1230,437 @@ class TestDeleteTaskHandler:
             assert result.isError is False
             assert "✅ Task successfully deleted" in result.content[0].text
             assert "PVTI_lADOBQfyVc0FoQzgBVgC" in result.content[0].text
+
+
+class TestCompleteTaskHandler:
+    """Test cases for the complete_task_handler function."""
+
+    @pytest.mark.asyncio
+    async def test_complete_task_success(self):
+        """Test successful task completion."""
+        mock_client = AsyncMock()
+
+        # Mock successful fields response showing current status and project info
+        mock_fields_response = {
+            "node": {
+                "id": "PVTI_task123",
+                "project": {
+                    "id": "PVT_project123",
+                    "fields": {
+                        "nodes": [
+                            {
+                                "id": "FIELD_STATUS_ID",
+                                "name": "Status",
+                                "dataType": "SINGLE_SELECT",
+                                "options": [
+                                    {"id": "OPT_TODO", "name": "Todo"},
+                                    {"id": "OPT_IN_PROGRESS", "name": "In Progress"},
+                                    {"id": "OPT_DONE", "name": "Done"},
+                                ],
+                            },
+                        ]
+                    },
+                },
+                "fieldValues": {
+                    "nodes": [
+                        {
+                            "field": {"name": "Status"},
+                            "optionId": "OPT_IN_PROGRESS",
+                            "singleSelectOption": {"name": "In Progress"},
+                        }
+                    ]
+                },
+            }
+        }
+
+        # Mock successful update response
+        mock_update_response = {
+            "updateProjectV2ItemFieldValue": {
+                "projectV2Item": {
+                    "id": "PVTI_task123",
+                    "updatedAt": "2024-01-01T10:30:00Z",
+                }
+            }
+        }
+
+        mock_client.query.return_value = mock_fields_response
+        mock_client.mutate.return_value = mock_update_response
+
+        with patch(
+            "src.github_project_manager_mcp.handlers.task_handlers.get_github_client",
+            return_value=mock_client,
+        ):
+            result = await complete_task_handler(
+                {
+                    "task_item_id": "PVTI_task123",
+                }
+            )
+
+        assert not result.isError
+        assert "Task completed successfully!" in result.content[0].text
+        assert "PVTI_task123" in result.content[0].text
+        assert "**New Status:** Done" in result.content[0].text
+
+    @pytest.mark.asyncio
+    async def test_complete_task_already_complete(self):
+        """Test completing a task that is already complete."""
+        mock_client = AsyncMock()
+
+        # Mock response with already complete task
+        mock_fields_response = {
+            "node": {
+                "id": "PVTI_task123",
+                "project": {
+                    "id": "PVT_project123",
+                    "fields": {
+                        "nodes": [
+                            {
+                                "id": "FIELD_STATUS_ID",
+                                "name": "Status",
+                                "dataType": "SINGLE_SELECT",
+                                "options": [
+                                    {"id": "OPT_TODO", "name": "Todo"},
+                                    {"id": "OPT_IN_PROGRESS", "name": "In Progress"},
+                                    {"id": "OPT_DONE", "name": "Done"},
+                                ],
+                            },
+                        ]
+                    },
+                },
+                "fieldValues": {
+                    "nodes": [
+                        {
+                            "field": {"name": "Status"},
+                            "optionId": "OPT_DONE",
+                            "singleSelectOption": {"name": "Done"},
+                        }
+                    ]
+                },
+            }
+        }
+
+        mock_client.query.return_value = mock_fields_response
+
+        with patch(
+            "src.github_project_manager_mcp.handlers.task_handlers.get_github_client",
+            return_value=mock_client,
+        ):
+            result = await complete_task_handler(
+                {
+                    "task_item_id": "PVTI_task123",
+                }
+            )
+
+        assert not result.isError
+        assert "Task is already complete!" in result.content[0].text
+        assert "**Status:** Done" in result.content[0].text
+
+    @pytest.mark.asyncio
+    async def test_complete_task_missing_task_item_id(self):
+        """Test error handling when task_item_id is missing."""
+        result = await complete_task_handler({})
+
+        assert result.isError
+        assert "task_item_id is required" in result.content[0].text
+
+    @pytest.mark.asyncio
+    async def test_complete_task_empty_task_item_id(self):
+        """Test error handling when task_item_id is empty."""
+        result = await complete_task_handler(
+            {
+                "task_item_id": "   ",
+            }
+        )
+
+        assert result.isError
+        assert "task_item_id is required" in result.content[0].text
+
+    @pytest.mark.asyncio
+    async def test_complete_task_github_client_not_initialized(self):
+        """Test error handling when GitHub client is not initialized."""
+        with patch(
+            "src.github_project_manager_mcp.handlers.task_handlers.get_github_client",
+            return_value=None,
+        ):
+            result = await complete_task_handler(
+                {
+                    "task_item_id": "PVTI_task123",
+                }
+            )
+
+        assert result.isError
+        assert "GitHub client not initialized" in result.content[0].text
+
+    @pytest.mark.asyncio
+    async def test_complete_task_not_found(self):
+        """Test error handling when task is not found."""
+        mock_client = AsyncMock()
+        mock_response = {"node": None}
+        mock_client.query.return_value = mock_response
+
+        with patch(
+            "src.github_project_manager_mcp.handlers.task_handlers.get_github_client",
+            return_value=mock_client,
+        ):
+            result = await complete_task_handler(
+                {
+                    "task_item_id": "PVTI_invalid",
+                }
+            )
+
+        assert result.isError
+        assert "Task not found" in result.content[0].text
+
+    @pytest.mark.asyncio
+    async def test_complete_task_no_status_field(self):
+        """Test error handling when task has no status field."""
+        mock_client = AsyncMock()
+        mock_response = {
+            "node": {
+                "id": "PVTI_task123",
+                "project": {
+                    "id": "PVT_project123",
+                    "fields": {
+                        "nodes": [
+                            {
+                                "id": "FIELD_PRIORITY_ID",
+                                "name": "Priority",
+                                "dataType": "SINGLE_SELECT",
+                                "options": [
+                                    {"id": "OPT_LOW", "name": "Low"},
+                                    {"id": "OPT_HIGH", "name": "High"},
+                                ],
+                            },
+                        ]
+                    },
+                },
+                "fieldValues": {"nodes": []},
+            }
+        }
+        mock_client.query.return_value = mock_response
+
+        with patch(
+            "src.github_project_manager_mcp.handlers.task_handlers.get_github_client",
+            return_value=mock_client,
+        ):
+            result = await complete_task_handler(
+                {
+                    "task_item_id": "PVTI_task123",
+                }
+            )
+
+        assert result.isError
+        assert "Status field not found" in result.content[0].text
+
+    @pytest.mark.asyncio
+    async def test_complete_task_graphql_query_error(self):
+        """Test error handling when GraphQL query fails."""
+        mock_client = AsyncMock()
+        mock_client.query.side_effect = Exception(
+            "GraphQL query error: Invalid task ID"
+        )
+
+        with patch(
+            "src.github_project_manager_mcp.handlers.task_handlers.get_github_client",
+            return_value=mock_client,
+        ):
+            result = await complete_task_handler(
+                {
+                    "task_item_id": "PVTI_invalid",
+                }
+            )
+
+        assert result.isError
+        assert "Failed to fetch task status" in result.content[0].text
+        assert "GraphQL query error: Invalid task ID" in result.content[0].text
+
+    @pytest.mark.asyncio
+    async def test_complete_task_update_mutation_error(self):
+        """Test error handling when update mutation fails."""
+        mock_client = AsyncMock()
+
+        # Mock successful query response
+        mock_fields_response = {
+            "node": {
+                "id": "PVTI_task123",
+                "project": {
+                    "id": "PVT_project123",
+                    "fields": {
+                        "nodes": [
+                            {
+                                "id": "FIELD_STATUS_ID",
+                                "name": "Status",
+                                "dataType": "SINGLE_SELECT",
+                                "options": [
+                                    {"id": "OPT_TODO", "name": "Todo"},
+                                    {"id": "OPT_IN_PROGRESS", "name": "In Progress"},
+                                    {"id": "OPT_DONE", "name": "Done"},
+                                ],
+                            },
+                        ]
+                    },
+                },
+                "fieldValues": {
+                    "nodes": [
+                        {
+                            "field": {"name": "Status"},
+                            "optionId": "OPT_IN_PROGRESS",
+                            "singleSelectOption": {"name": "In Progress"},
+                        }
+                    ]
+                },
+            }
+        }
+
+        mock_client.query.return_value = mock_fields_response
+        mock_client.mutate.side_effect = Exception(
+            "GraphQL mutation error: Permission denied"
+        )
+
+        with patch(
+            "src.github_project_manager_mcp.handlers.task_handlers.get_github_client",
+            return_value=mock_client,
+        ):
+            result = await complete_task_handler(
+                {
+                    "task_item_id": "PVTI_task123",
+                }
+            )
+
+        assert result.isError
+        assert "Failed to fetch task status" in result.content[0].text
+        assert "GraphQL mutation error: Permission denied" in result.content[0].text
+
+    @pytest.mark.asyncio
+    async def test_complete_task_no_update_response(self):
+        """Test error handling when update mutation returns no response."""
+        mock_client = AsyncMock()
+
+        # Mock successful query response
+        mock_fields_response = {
+            "node": {
+                "id": "PVTI_task123",
+                "project": {
+                    "id": "PVT_project123",
+                    "fields": {
+                        "nodes": [
+                            {
+                                "id": "FIELD_STATUS_ID",
+                                "name": "Status",
+                                "dataType": "SINGLE_SELECT",
+                                "options": [
+                                    {"id": "OPT_TODO", "name": "Todo"},
+                                    {"id": "OPT_IN_PROGRESS", "name": "In Progress"},
+                                    {"id": "OPT_DONE", "name": "Done"},
+                                ],
+                            },
+                        ]
+                    },
+                },
+                "fieldValues": {
+                    "nodes": [
+                        {
+                            "field": {"name": "Status"},
+                            "optionId": "OPT_IN_PROGRESS",
+                            "singleSelectOption": {"name": "In Progress"},
+                        }
+                    ]
+                },
+            }
+        }
+
+        mock_client.query.return_value = mock_fields_response
+        mock_client.mutate.return_value = None
+
+        with patch(
+            "src.github_project_manager_mcp.handlers.task_handlers.get_github_client",
+            return_value=mock_client,
+        ):
+            result = await complete_task_handler(
+                {
+                    "task_item_id": "PVTI_task123",
+                }
+            )
+
+        assert result.isError
+        assert (
+            "No response data received from completion operation"
+            in result.content[0].text
+        )
+
+    @pytest.mark.asyncio
+    async def test_complete_task_invalid_update_response_format(self):
+        """Test error handling when update response format is unexpected."""
+        mock_client = AsyncMock()
+
+        # Mock successful query response
+        mock_fields_response = {
+            "node": {
+                "id": "PVTI_task123",
+                "project": {
+                    "id": "PVT_project123",
+                    "fields": {
+                        "nodes": [
+                            {
+                                "id": "FIELD_STATUS_ID",
+                                "name": "Status",
+                                "dataType": "SINGLE_SELECT",
+                                "options": [
+                                    {"id": "OPT_TODO", "name": "Todo"},
+                                    {"id": "OPT_IN_PROGRESS", "name": "In Progress"},
+                                    {"id": "OPT_DONE", "name": "Done"},
+                                ],
+                            },
+                        ]
+                    },
+                },
+                "fieldValues": {
+                    "nodes": [
+                        {
+                            "field": {"name": "Status"},
+                            "optionId": "OPT_IN_PROGRESS",
+                            "singleSelectOption": {"name": "In Progress"},
+                        }
+                    ]
+                },
+            }
+        }
+
+        mock_client.query.return_value = mock_fields_response
+        mock_client.mutate.return_value = {"unexpected": "format"}
+
+        with patch(
+            "src.github_project_manager_mcp.handlers.task_handlers.get_github_client",
+            return_value=mock_client,
+        ):
+            result = await complete_task_handler(
+                {
+                    "task_item_id": "PVTI_task123",
+                }
+            )
+
+        assert result.isError
+        assert (
+            "Invalid response format from completion operation"
+            in result.content[0].text
+        )
+
+    @pytest.mark.asyncio
+    async def test_complete_task_api_exception(self):
+        """Test error handling for general API exceptions."""
+        mock_client = AsyncMock()
+        mock_client.query.side_effect = RuntimeError("Network timeout")
+
+        with patch(
+            "src.github_project_manager_mcp.handlers.task_handlers.get_github_client",
+            return_value=mock_client,
+        ):
+            result = await complete_task_handler(
+                {
+                    "task_item_id": "PVTI_task123",
+                }
+            )
+
+        assert result.isError
+        assert "Failed to fetch task status" in result.content[0].text
+        assert "Network timeout" in result.content[0].text

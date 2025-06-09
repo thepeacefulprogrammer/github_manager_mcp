@@ -119,6 +119,7 @@ except ImportError as e:
 
 try:
     from github_project_manager_mcp.handlers.task_handlers import (
+        complete_task_handler,
         create_task_handler,
         delete_task_handler,
     )
@@ -902,6 +903,37 @@ class GitHubProjectManagerMCPFastServer:
                 return (
                     f'{{"success": false, "error": "Failed to delete task: {str(e)}"}}'
                 )
+
+        # Complete task tool
+        @self.mcp.tool()
+        async def complete_task(task_item_id: str) -> str:
+            """Mark a task as complete by setting its status to 'Done'. This is a convenience method that automatically sets the task status to 'Done' without requiring other parameters."""
+            logger.info(f"Complete task called: task_item_id={task_item_id}")
+
+            try:
+                await self._ensure_async_initialized()
+
+                if not self.github_client:
+                    return '{"success": false, "error": "GitHub client not initialized - check token configuration"}'
+
+                # Call the existing complete task handler
+                args = {
+                    "task_item_id": task_item_id,
+                }
+
+                result = await complete_task_handler(args)
+                logger.info(f"Complete task result: {result}")
+
+                # Extract text content from CallToolResult
+                if hasattr(result, "content") and result.content:
+                    return result.content[0].text
+                else:
+                    return str(result)
+
+            except Exception as e:
+                logger.error(f"Error in complete_task: {e}")
+                logger.error(f"Traceback: {traceback.format_exc()}")
+                return f'{{"success": false, "error": "Failed to complete task: {str(e)}"}}'
 
         # Add subtask tool
         @self.mcp.tool()
