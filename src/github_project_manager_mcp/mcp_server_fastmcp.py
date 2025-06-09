@@ -985,10 +985,8 @@ class GitHubProjectManagerMCPFastServer:
                 logger.error(f"Traceback: {traceback.format_exc()}")
                 return f'{{"success": false, "error": "Failed to list subtasks: {str(e)}"}}'
 
-        # Log the total number of tools registered
-        logger.info(
-            f"Successfully registered {len(self.mcp.tools)} MCP tools with FastMCP"
-        )
+        # Log successful tool registration
+        logger.info("Successfully registered all MCP tools with FastMCP")
 
 
 def main():
