@@ -334,7 +334,10 @@ class TestPRDHandlerRegistration:
         assert "list_prds_in_project" in tool_names
         assert "delete_prd_from_project" in tool_names
         assert "update_prd" in tool_names
-        assert len(PRD_TOOLS) == 4  # add_prd, list_prds, delete_prd, update_prd
+        assert "update_prd_status" in tool_names
+        assert (
+            len(PRD_TOOLS) == 5
+        )  # add_prd, list_prds, delete_prd, update_prd, update_prd_status
 
         # Verify all tools have required attributes
         for tool in PRD_TOOLS:
@@ -1251,3 +1254,477 @@ class TestUpdatePrdHandler:
             assert len(result.content) == 1
             response_text = result.content[0].text
             assert "✅ PRD successfully updated!" in response_text
+
+
+class TestUpdatePrdStatusHandler:
+    """Test cases for update_prd_status MCP tool."""
+
+    @pytest.mark.asyncio
+    async def test_update_prd_status_success(self):
+        """Test successful PRD status update."""
+        mock_arguments = {
+            "prd_item_id": "PVTI_lADOBQfyVc0FoQzgBVgC",
+            "status": "In Progress",
+            "priority": "High",
+        }
+
+        # Mock GitHub client and response
+        mock_client = AsyncMock()
+
+        # Mock project item details query response
+        mock_project_response = {
+            "node": {
+                "id": "PVTI_lADOBQfyVc0FoQzgBVgC",
+                "project": {
+                    "id": "PVT_kwDOBQfyVc0FoQ",
+                    "fields": {
+                        "nodes": [
+                            {
+                                "id": "FIELD_STATUS_ID",
+                                "name": "Status",
+                                "dataType": "SINGLE_SELECT",
+                                "options": [
+                                    {"id": "OPT_BACKLOG", "name": "Backlog"},
+                                    {"id": "OPT_IN_PROGRESS", "name": "In Progress"},
+                                    {"id": "OPT_DONE", "name": "Done"},
+                                ],
+                            },
+                            {
+                                "id": "FIELD_PRIORITY_ID",
+                                "name": "Priority",
+                                "dataType": "SINGLE_SELECT",
+                                "options": [
+                                    {"id": "OPT_LOW", "name": "Low"},
+                                    {"id": "OPT_MEDIUM", "name": "Medium"},
+                                    {"id": "OPT_HIGH", "name": "High"},
+                                ],
+                            },
+                        ]
+                    },
+                },
+            }
+        }
+
+        # Mock update field value responses
+        mock_status_update_response = {
+            "data": {
+                "updateProjectV2ItemFieldValue": {
+                    "projectV2Item": {
+                        "id": "PVTI_lADOBQfyVc0FoQzgBVgC",
+                        "updatedAt": "2025-01-01T12:30:00Z",
+                    }
+                }
+            }
+        }
+
+        mock_priority_update_response = {
+            "data": {
+                "updateProjectV2ItemFieldValue": {
+                    "projectV2Item": {
+                        "id": "PVTI_lADOBQfyVc0FoQzgBVgC",
+                        "updatedAt": "2025-01-01T12:31:00Z",
+                    }
+                }
+            }
+        }
+
+        # Setup mock client call sequence
+        mock_client.query.return_value = mock_project_response
+        mock_client.mutate.side_effect = [
+            mock_status_update_response,
+            mock_priority_update_response,
+        ]
+
+        with patch(
+            "github_project_manager_mcp.handlers.prd_handlers.get_github_client"
+        ) as mock_get_client:
+            mock_get_client.return_value = mock_client
+
+            # Import the handler after patching
+            from github_project_manager_mcp.handlers.prd_handlers import (
+                update_prd_status_handler,
+            )
+
+            result = await update_prd_status_handler(mock_arguments)
+
+            assert result.isError is False
+            assert len(result.content) == 1
+
+            content = result.content[0].text
+            assert "successfully updated" in content.lower()
+            assert "status" in content.lower()
+            assert "priority" in content.lower()
+            assert "In Progress" in content
+            assert "High" in content
+
+    @pytest.mark.asyncio
+    async def test_update_prd_status_only(self):
+        """Test updating only PRD status."""
+        mock_arguments = {
+            "prd_item_id": "PVTI_lADOBQfyVc0FoQzgBVgC",
+            "status": "Done",
+        }
+
+        # Mock GitHub client and response
+        mock_client = AsyncMock()
+
+        mock_project_response = {
+            "node": {
+                "id": "PVTI_lADOBQfyVc0FoQzgBVgC",
+                "project": {
+                    "id": "PVT_kwDOBQfyVc0FoQ",
+                    "fields": {
+                        "nodes": [
+                            {
+                                "id": "FIELD_STATUS_ID",
+                                "name": "Status",
+                                "dataType": "SINGLE_SELECT",
+                                "options": [
+                                    {"id": "OPT_BACKLOG", "name": "Backlog"},
+                                    {"id": "OPT_IN_PROGRESS", "name": "In Progress"},
+                                    {"id": "OPT_DONE", "name": "Done"},
+                                ],
+                            },
+                        ]
+                    },
+                },
+            }
+        }
+
+        mock_update_response = {
+            "data": {
+                "updateProjectV2ItemFieldValue": {
+                    "projectV2Item": {
+                        "id": "PVTI_lADOBQfyVc0FoQzgBVgC",
+                        "updatedAt": "2025-01-01T12:30:00Z",
+                    }
+                }
+            }
+        }
+
+        mock_client.query.return_value = mock_project_response
+        mock_client.mutate.return_value = mock_update_response
+
+        with patch(
+            "github_project_manager_mcp.handlers.prd_handlers.get_github_client"
+        ) as mock_get_client:
+            mock_get_client.return_value = mock_client
+
+            from github_project_manager_mcp.handlers.prd_handlers import (
+                update_prd_status_handler,
+            )
+
+            result = await update_prd_status_handler(mock_arguments)
+
+            assert result.isError is False
+            assert "Done" in result.content[0].text
+
+    @pytest.mark.asyncio
+    async def test_update_prd_priority_only(self):
+        """Test updating only PRD priority."""
+        mock_arguments = {
+            "prd_item_id": "PVTI_lADOBQfyVc0FoQzgBVgC",
+            "priority": "Low",
+        }
+
+        mock_client = AsyncMock()
+
+        mock_project_response = {
+            "node": {
+                "id": "PVTI_lADOBQfyVc0FoQzgBVgC",
+                "project": {
+                    "id": "PVT_kwDOBQfyVc0FoQ",
+                    "fields": {
+                        "nodes": [
+                            {
+                                "id": "FIELD_PRIORITY_ID",
+                                "name": "Priority",
+                                "dataType": "SINGLE_SELECT",
+                                "options": [
+                                    {"id": "OPT_LOW", "name": "Low"},
+                                    {"id": "OPT_MEDIUM", "name": "Medium"},
+                                    {"id": "OPT_HIGH", "name": "High"},
+                                ],
+                            },
+                        ]
+                    },
+                },
+            }
+        }
+
+        mock_update_response = {
+            "data": {
+                "updateProjectV2ItemFieldValue": {
+                    "projectV2Item": {
+                        "id": "PVTI_lADOBQfyVc0FoQzgBVgC",
+                        "updatedAt": "2025-01-01T12:30:00Z",
+                    }
+                }
+            }
+        }
+
+        mock_client.query.return_value = mock_project_response
+        mock_client.mutate.return_value = mock_update_response
+
+        with patch(
+            "github_project_manager_mcp.handlers.prd_handlers.get_github_client"
+        ) as mock_get_client:
+            mock_get_client.return_value = mock_client
+
+            from github_project_manager_mcp.handlers.prd_handlers import (
+                update_prd_status_handler,
+            )
+
+            result = await update_prd_status_handler(mock_arguments)
+
+            assert result.isError is False
+            assert "Low" in result.content[0].text
+
+    @pytest.mark.asyncio
+    async def test_update_prd_status_missing_item_id(self):
+        """Test update_prd_status with missing PRD item ID."""
+        mock_arguments = {
+            "status": "In Progress",
+        }
+
+        from github_project_manager_mcp.handlers.prd_handlers import (
+            update_prd_status_handler,
+        )
+
+        result = await update_prd_status_handler(mock_arguments)
+
+        assert result.isError is True
+        assert "required" in result.content[0].text.lower()
+        assert "prd_item_id" in result.content[0].text.lower()
+
+    @pytest.mark.asyncio
+    async def test_update_prd_status_empty_item_id(self):
+        """Test update_prd_status with empty PRD item ID."""
+        mock_arguments = {
+            "prd_item_id": "",
+            "status": "In Progress",
+        }
+
+        from github_project_manager_mcp.handlers.prd_handlers import (
+            update_prd_status_handler,
+        )
+
+        result = await update_prd_status_handler(mock_arguments)
+
+        assert result.isError is True
+        assert "required" in result.content[0].text.lower()
+
+    @pytest.mark.asyncio
+    async def test_update_prd_status_no_updates_provided(self):
+        """Test update_prd_status with no update fields provided."""
+        mock_arguments = {
+            "prd_item_id": "PVTI_lADOBQfyVc0FoQzgBVgC",
+        }
+
+        from github_project_manager_mcp.handlers.prd_handlers import (
+            update_prd_status_handler,
+        )
+
+        result = await update_prd_status_handler(mock_arguments)
+
+        assert result.isError is True
+        assert "at least one update field" in result.content[0].text.lower()
+
+    @pytest.mark.asyncio
+    async def test_update_prd_status_invalid_status(self):
+        """Test update_prd_status with invalid status value."""
+        mock_arguments = {
+            "prd_item_id": "PVTI_lADOBQfyVc0FoQzgBVgC",
+            "status": "Invalid Status",
+        }
+
+        from github_project_manager_mcp.handlers.prd_handlers import (
+            update_prd_status_handler,
+        )
+
+        result = await update_prd_status_handler(mock_arguments)
+
+        assert result.isError is True
+        assert "invalid status" in result.content[0].text.lower()
+
+    @pytest.mark.asyncio
+    async def test_update_prd_status_invalid_priority(self):
+        """Test update_prd_status with invalid priority value."""
+        mock_arguments = {
+            "prd_item_id": "PVTI_lADOBQfyVc0FoQzgBVgC",
+            "priority": "Invalid Priority",
+        }
+
+        from github_project_manager_mcp.handlers.prd_handlers import (
+            update_prd_status_handler,
+        )
+
+        result = await update_prd_status_handler(mock_arguments)
+
+        assert result.isError is True
+        assert "invalid priority" in result.content[0].text.lower()
+
+    @pytest.mark.asyncio
+    async def test_update_prd_status_github_client_not_initialized(self):
+        """Test update_prd_status when GitHub client is not initialized."""
+        mock_arguments = {
+            "prd_item_id": "PVTI_lADOBQfyVc0FoQzgBVgC",
+            "status": "In Progress",
+        }
+
+        with patch(
+            "github_project_manager_mcp.handlers.prd_handlers.get_github_client"
+        ) as mock_get_client:
+            mock_get_client.return_value = None
+
+            from github_project_manager_mcp.handlers.prd_handlers import (
+                update_prd_status_handler,
+            )
+
+            result = await update_prd_status_handler(mock_arguments)
+
+            assert result.isError is True
+            assert "not initialized" in result.content[0].text.lower()
+
+    @pytest.mark.asyncio
+    async def test_update_prd_status_project_item_not_found(self):
+        """Test update_prd_status when project item is not found."""
+        mock_arguments = {
+            "prd_item_id": "INVALID_ITEM_ID",
+            "status": "In Progress",
+        }
+
+        mock_client = AsyncMock()
+        mock_response = {"node": None}
+
+        mock_client.query.return_value = mock_response
+
+        with patch(
+            "github_project_manager_mcp.handlers.prd_handlers.get_github_client"
+        ) as mock_get_client:
+            mock_get_client.return_value = mock_client
+
+            from github_project_manager_mcp.handlers.prd_handlers import (
+                update_prd_status_handler,
+            )
+
+            result = await update_prd_status_handler(mock_arguments)
+
+            assert result.isError is True
+            assert "not found" in result.content[0].text.lower()
+
+    @pytest.mark.asyncio
+    async def test_update_prd_status_field_not_found(self):
+        """Test update_prd_status when status field is not found in project."""
+        mock_arguments = {
+            "prd_item_id": "PVTI_lADOBQfyVc0FoQzgBVgC",
+            "status": "In Progress",
+        }
+
+        mock_client = AsyncMock()
+        mock_project_response = {
+            "node": {
+                "id": "PVTI_lADOBQfyVc0FoQzgBVgC",
+                "project": {
+                    "id": "PVT_kwDOBQfyVc0FoQ",
+                    "fields": {"nodes": []},  # No fields found
+                },
+            }
+        }
+
+        mock_client.query.return_value = mock_project_response
+
+        with patch(
+            "github_project_manager_mcp.handlers.prd_handlers.get_github_client"
+        ) as mock_get_client:
+            mock_get_client.return_value = mock_client
+
+            from github_project_manager_mcp.handlers.prd_handlers import (
+                update_prd_status_handler,
+            )
+
+            result = await update_prd_status_handler(mock_arguments)
+
+            assert result.isError is True
+            assert "field not found" in result.content[0].text.lower()
+
+    @pytest.mark.asyncio
+    async def test_update_prd_status_option_not_found(self):
+        """Test update_prd_status when status option is not found."""
+        mock_arguments = {
+            "prd_item_id": "PVTI_lADOBQfyVc0FoQzgBVgC",
+            "status": "In Progress",  # Valid status value for our enum
+        }
+
+        mock_client = AsyncMock()
+        mock_project_response = {
+            "node": {
+                "id": "PVTI_lADOBQfyVc0FoQzgBVgC",
+                "project": {
+                    "id": "PVT_kwDOBQfyVc0FoQ",
+                    "fields": {
+                        "nodes": [
+                            {
+                                "id": "FIELD_STATUS_ID",
+                                "name": "Status",
+                                "dataType": "SINGLE_SELECT",
+                                "options": [
+                                    {"id": "OPT_BACKLOG", "name": "Backlog"},
+                                    {"id": "OPT_DONE", "name": "Done"},
+                                    # Note: "In Progress" is not in the project's available options
+                                ],
+                            },
+                        ]
+                    },
+                },
+            }
+        }
+
+        mock_client.query.return_value = mock_project_response
+
+        with patch(
+            "github_project_manager_mcp.handlers.prd_handlers.get_github_client"
+        ) as mock_get_client:
+            mock_get_client.return_value = mock_client
+
+            from github_project_manager_mcp.handlers.prd_handlers import (
+                update_prd_status_handler,
+            )
+
+            result = await update_prd_status_handler(mock_arguments)
+
+            assert result.isError is True
+            assert (
+                "option" in result.content[0].text.lower()
+                and "not found" in result.content[0].text.lower()
+            )
+
+    @pytest.mark.asyncio
+    async def test_update_prd_status_graphql_error(self):
+        """Test update_prd_status with GraphQL API errors."""
+        mock_arguments = {
+            "prd_item_id": "PVTI_lADOBQfyVc0FoQzgBVgC",
+            "status": "In Progress",
+        }
+
+        mock_client = AsyncMock()
+        mock_error_response = {
+            "data": None,
+            "errors": [{"message": "Invalid project item ID"}],
+        }
+
+        mock_client.query.return_value = mock_error_response
+
+        with patch(
+            "github_project_manager_mcp.handlers.prd_handlers.get_github_client"
+        ) as mock_get_client:
+            mock_get_client.return_value = mock_client
+
+            from github_project_manager_mcp.handlers.prd_handlers import (
+                update_prd_status_handler,
+            )
+
+            result = await update_prd_status_handler(mock_arguments)
+
+            assert result.isError is True
+            assert "Invalid project item ID" in result.content[0].text

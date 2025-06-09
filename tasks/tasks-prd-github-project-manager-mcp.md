@@ -2,30 +2,35 @@
 
 - `src/github_project_manager_mcp/__init__.py` - Main package initialization and version info
 
-- `src/github_project_manager_mcp/mcp_server_fastmcp.py` - FastMCP-based server implementation for proper Cursor IDE integration with comprehensive debugging, async patterns, and complete project management tools (test_connection, create_project, list_projects, delete_project, get_project_details, update_project, list_prds_in_project, add_prd_to_project, update_prd, delete_prd_from_project) - **10 TOOLS TOTAL**
+- `src/github_project_manager_mcp/mcp_server_fastmcp.py` - FastMCP-based server implementation for proper Cursor IDE integration with comprehensive debugging, async patterns, and complete project management tools (test_connection, create_project, list_projects, delete_project, get_project_details, update_project, list_prds_in_project, add_prd_to_project, update_prd, update_prd_status, delete_prd_from_project, create_task, list_tasks, update_task, delete_task) - **17 TOOLS IMPLEMENTED, 18 TOOLS PLANNED**
 
 - `src/github_project_manager_mcp/github_client.py` - GitHub GraphQL API client with async support and error handling
 - `tests/unit/test_github_client.py` - Unit tests for GitHub API client with TDD approach
 - `src/github_project_manager_mcp/handlers/project_handlers.py` - MCP tool handlers for project management operations including create_project, list_projects, delete_project, and get_project_details with repository validation, pagination support, GitHub API integration, safe deletion with confirmation, and detailed project information retrieval
 - `tests/unit/handlers/test_project_handlers.py` - Unit tests for project handlers with comprehensive TDD test coverage for create_project, list_projects, delete_project, and get_project_details functionality
-- `src/github_project_manager_mcp/handlers/prd_handlers.py` - MCP tool handlers for PRD management operations including add_prd_to_project, list_prds_in_project, and delete_prd_from_project with comprehensive PRD creation, listing with pagination support, deletion with confirmation, structured descriptions, status/priority validation, and GitHub Projects v2 integration
-- `tests/unit/handlers/test_prd_handlers.py` - Unit tests for PRD handlers with comprehensive TDD test coverage for add_prd_to_project, list_prds_in_project, and delete_prd_from_project functionality including validation, error handling, pagination, and API integration (26 total tests)
+- `src/github_project_manager_mcp/handlers/prd_handlers.py` - MCP tool handlers for PRD management operations including add_prd_to_project, list_prds_in_project, delete_prd_from_project, update_prd, and update_prd_status with comprehensive PRD creation, listing with pagination support, deletion with confirmation, structured descriptions, status/priority validation, field value updates for status and priority using GitHub Projects v2 single select fields, and GitHub Projects v2 integration
+- `tests/unit/handlers/test_prd_handlers.py` - Unit tests for PRD handlers with comprehensive TDD test coverage for add_prd_to_project, list_prds_in_project, delete_prd_from_project, update_prd, and update_prd_status functionality including validation, error handling, pagination, field value updates, and API integration (39 total tests)
 - `src/github_project_manager_mcp/handlers/prd_handlers.test.py` - Unit tests for PRD handlers
-- `src/github_project_manager_mcp/handlers/task_handlers.py` - MCP tool handlers for task management operations
-- `src/github_project_manager_mcp/handlers/task_handlers.test.py` - Unit tests for task handlers
+- `src/github_project_manager_mcp/handlers/task_handlers.py` - MCP tool handlers for task management operations including create_task with parent PRD association, list_tasks with PRD filtering, update_task with comprehensive status and field updates, and delete_task with safety confirmation requirements - **COMPLETE TASK CRUD OPERATIONS** ✅ld management, parameter validation, task metadata management (priority, estimated hours), pagination support, and structured task description formatting with GitHub Projects v2 API integration
+- `tests/unit/handlers/test_task_handlers.py` - Unit tests for task handlers with comprehensive TDD test coverage for create_task, list_tasks, update_task, and delete_task functionality including validation, error handling, pagination, filtering, field updates, API integration, and safety confirmation requirements (42 total tests)
 - `src/github_project_manager_mcp/handlers/subtask_handlers.py` - MCP tool handlers for subtask management operations
 - `src/github_project_manager_mcp/handlers/subtask_handlers.test.py` - Unit tests for subtask handlers
+- `src/github_project_manager_mcp/handlers/status_column_handlers.py` - MCP tool handlers for status column (single select field) management operations including create_status_column, list_status_columns, update_status_column, delete_status_column, and get_status_column with comprehensive GitHub Projects v2 API integration
+- `tests/unit/handlers/test_status_column_handlers.py` - Unit tests for status column handlers with comprehensive TDD test coverage for all status column functionality including validation, error handling, and API integration (19 total tests)
+- `src/github_project_manager_mcp/models/status_column.py` - Data models for status column entities including StatusColumn, StatusColumnOption, and DefaultStatusColumns with comprehensive validation and GitHub Projects v2 single select field mapping
 - `src/github_project_manager_mcp/models/project.py` - Data models for project entities including Project, ProjectField, and related classes for GitHub Projects v2 API
 - `tests/unit/test_project_model.py` - Unit tests for Project data models with comprehensive TDD test coverage
 - `src/github_project_manager_mcp/models/prd.py` - Data models for PRD entities including PRD, PRDStatus, and PRDPriority classes for GitHub Projects v2 integration with comprehensive field mapping and validation
 - `tests/unit/test_prd_model.py` - Unit tests for PRD data models with comprehensive TDD test coverage for all PRD functionality including validation, serialization, and GitHub item mapping
-- `src/github_project_manager_mcp/models/task.py` - Data models for task entities
-- `src/github_project_manager_mcp/models/subtask.py` - Data models for subtask entities
+- `src/github_project_manager_mcp/models/task.py` - Data models for Task entities including Task, TaskStatus, and TaskPriority classes with parent PRD relationship, time tracking, progress calculation, and comprehensive GitHub Projects v2 integration
+- `tests/unit/test_task_model.py` - Unit tests for Task data models with comprehensive TDD test coverage for Task functionality including validation, serialization, GitHub item mapping, parent PRD relationships, time tracking, and progress methods (19 total tests)
+- `tests/unit/test_subtask_model.py` - Unit tests for Subtask data models with comprehensive TDD test coverage for Subtask functionality including validation, serialization, checklist item mapping, completion tracking, ordering, GitHub integration, and status management methods (25 total tests)
+- `src/github_project_manager_mcp/models/subtask.py` - Data models for Subtask entities including Subtask, SubtaskStatus classes with checklist item structure, completion tracking, ordering, GitHub Projects v2 integration, and comprehensive validation and serialization methods
 - `src/github_project_manager_mcp/models/__init__.py` - Models package initialization with Project model exports
 - `src/github_project_manager_mcp/handlers/__init__.py` - Handlers package initialization with project handler exports
 - `src/github_project_manager_mcp/utils/auth.py` - GitHub authentication utilities with token validation and management
 - `tests/unit/test_auth.py` - Unit tests for authentication utilities with TDD approach
-- `src/github_project_manager_mcp/utils/query_builder.py` - GraphQL query builder for Projects v2 API with pagination, field selection, delete project mutations, and comprehensive PRD listing queries for both Draft Issues and regular Issues
+- `src/github_project_manager_mcp/utils/query_builder.py` - GraphQL query builder for Projects v2 API with pagination, field selection, delete project mutations, comprehensive PRD listing queries for both Draft Issues and regular Issues, task listing queries with parent PRD filtering support, project item field queries for field value updates, and field value update mutations for single select fields
 - `tests/unit/test_query_builder.py` - Unit tests for GraphQL query builder with TDD approach
 - `src/github_project_manager_mcp/utils/error_handling.py` - Error handling and retry logic with exponential backoff and circuit breaker patterns
 - `tests/unit/test_error_handling.py` - Unit tests for error handling utilities with TDD approach
@@ -69,22 +74,44 @@
 - ✅ `list_prds_in_project` - **COMPLETE PRD LISTING WITH PAGINATION SUPPORT** (lists all PRDs in a project with filtering, field values, assignees, and comprehensive metadata)
 - ✅ `update_prd` - **COMPLETE PRD UPDATE FUNCTIONALITY** (updates title, body content, and assignees for PRDs with comprehensive validation and response formatting)
 - ✅ `delete_prd_from_project` - **FULLY FUNCTIONAL PRD CLEANUP TOOL** (safely deletes PRDs from projects with confirmation, proper GraphQL API integration)
+- ✅ `update_task` - **COMPLETE TASK UPDATE FUNCTIONALITY** (updates task status and details)
 - ✅ GitHub Authentication - Working with .env token
 - ✅ GraphQL API - Successfully calling GitHub Projects v2 API
 
-**CURRENT FOCUS**: **PROJECT-LEVEL CRUD OPERATIONS COMPLETED!**
-- ✅ Project Create, Read, Update, Delete - **ALL COMPLETED**
-- 🎯 **NEXT PRIORITY**: PRD-level CRUD completion (list_prds, update_prd)
+**CURRENT FOCUS**: **HIERARCHICAL CRUD COMPLETION STATUS**
+
+📊 **CRUD OPERATIONS STATUS ANALYSIS** (Overall: 80% Complete)
+
+🏢 **PROJECT LEVEL: 100% COMPLETE** ✅
+- ✅ Create: `create_project` | ✅ Read: `list_projects`, `get_project_details`
+- ✅ Update: `update_project` | ✅ Delete: `delete_project`
+
+📋 **PRD LEVEL: 100% COMPLETE** ✅
+- ✅ Create: `add_prd_to_project` | ✅ Read: `list_prds_in_project`
+- ✅ Update: `update_prd`, `update_prd_status` | ✅ Delete: `delete_prd_from_project`
+
+📝 **TASK LEVEL: 100% COMPLETE** ✅
+- ✅ Create: `create_task` | ✅ Read: `list_tasks` | ✅ Update: `update_task`
+- ✅ Delete: `delete_task` - **JUST COMPLETED** 🎉
+
+☑️ **SUBTASK LEVEL: 20% COMPLETE** ⚠️
+- ✅ Data Model: `Subtask` class implemented (Task 4.9 ✅)
+- ❌ Create: `add_subtask` (Task 4.10 - Next up!)
+- ❌ Read: `list_subtasks` (Task 4.11 - Planned)
+- ❌ **GAPS**: `update_subtask`, `delete_subtask` - **MISSING FROM ROADMAP**
 
 **DEVELOPMENT STRATEGY**: **HIERARCHICAL CRUD COMPLETION**
 Following a systematic approach to ensure solid foundations:
 1. ✅ **Complete Project Level CRUD** (100% - ALL OPERATIONS COMPLETED!)
 2. ✅ **Complete PRD Level CRUD** (100% - ALL OPERATIONS COMPLETED! 🎉)
-3. 📝 **Complete Task Level CRUD** (0% - all operations needed)
-4. ✅ **Complete Subtask Level CRUD** (0% - all operations needed)
+3. ✅ **Complete Task Level CRUD** (100% - ALL OPERATIONS COMPLETED! 🎉)
+4. 🏗️ **Complete Subtask Level CRUD** (20% - data model ready, tools pending)
 5. 🔄 **Implement Status Management & Workflow Automation**
 
-**NEXT PHASE**: Ready to start Task-level CRUD operations! PRD-level functionality is now complete!
+**IMMEDIATE PRIORITIES**:
+1. 🎯 **Task 4.10**: Implement `add_subtask` MCP tool handler (Next up!)
+2. 📋 **Missing Operations**: Add `update_subtask`, `delete_subtask` to roadmap
+3. 🚀 **Goal**: Achieve 100% CRUD coverage across all hierarchy levels
 
 ## Tasks
 
@@ -144,9 +171,9 @@ Following a systematic approach to ensure solid foundations:
     - [x] 3.7.3 Build GraphQL mutation for updateProjectV2 with proper field mapping
     - [x] 3.7.4 Add comprehensive error handling and validation logic
     - [x] 3.7.5 Register update_project tool in FastMCP server with proper parameter schema
-    - [ ] 3.7.6 Test update_project with real GitHub API calls and various update scenarios
+    - [X] 3.7.6 Test update_project with real GitHub API calls and various update scenarios
     - [x] 3.7.7 Add unit tests for update_project functionality with TDD approach
-  - [ ] 3.8 Create status column configuration and management for projects
+  - [x] 3.8 Create status column configuration and management for projects
   - [ ] 3.9 Add project validation logic for required fields and constraints
   - [ ] 3.10 Implement project search and filtering capabilities
   - [ ] 3.11 Create comprehensive unit tests for all project management operations
@@ -158,16 +185,18 @@ Following a systematic approach to ensure solid foundations:
   - [x] 4.2.1 Implement delete_prd_from_project MCP tool handler for cleanup operations - **FULLY WORKING AND TESTED**
   - [x] 4.3 Implement list_prds_in_project MCP tool handler with project filtering and pagination - **FULLY WORKING AND TESTED**
   - [x] 4.4 Implement update_prd MCP tool handler for updating PRD title, body, and assignees - **FULLY WORKING AND TESTED**
-  - [x] 4.4 Implement update_prd MCP tool handler for updating PRD title, body, and assignees - **FULLY WORKING AND TESTED**
-  - [ ] 4.4 Implement update_prd_status MCP tool handler for status and detail updates
-  - [ ] 4.5 Create Task data model with relationship to parent PRD
-  - [ ] 4.6 Implement create_task MCP tool handler with PRD association
-  - [ ] 4.7 Implement list_tasks MCP tool handler with PRD and project filtering
-  - [ ] 4.8 Implement update_task MCP tool handler for status and detail management
-  - [ ] 4.9 Create Subtask data model with checklist item structure
+  - [x] 4.4 Implement update_prd_status MCP tool handler for status and detail updates - **FULLY WORKING AND TESTED**
+  - [x] 4.5 Create Task data model with relationship to parent PRD
+  - [x] 4.6 Implement create_task MCP tool handler with PRD association
+  - [x] 4.7 Implement list_tasks MCP tool handler with PRD and project filtering
+  - [x] 4.8 Implement update_task MCP tool handler for status and detail management - **FULLY WORKING AND TESTED**
+  - [x] 4.9 Create Subtask data model with checklist item structure
+  - [x] 4.9.1 **NEW**: Implement delete_task MCP tool handler for task cleanup operations
   - [ ] 4.10 Implement add_subtask MCP tool handler with task association
   - [ ] 4.11 Implement list_subtasks MCP tool handler for task-specific queries
   - [ ] 4.12 Implement complete_subtask MCP tool handler with completion tracking
+  - [ ] 4.12.1 **NEW**: Implement update_subtask MCP tool handler for subtask content and status updates
+  - [ ] 4.12.2 **NEW**: Implement delete_subtask MCP tool handler for subtask cleanup operations
   - [ ] 4.13 Create hierarchical relationship management between PRDs, tasks, and subtasks
   - [ ] 4.14 Add validation logic for all PRD, task, and subtask operations
   - [ ] 4.15 Create comprehensive unit tests for PRD, task, and subtask functionality
@@ -185,3 +214,106 @@ Following a systematic approach to ensure solid foundations:
   - [ ] 5.10 Create validation rules for status transitions and workflow compliance
   - [ ] 5.11 Add comprehensive integration tests for complete workflow scenarios
   - [ ] 5.12 Create end-to-end tests simulating full PRD lifecycle automation
+
+# Task Progress for GitHub Project Manager MCP
+
+## ✅ Task 4.8: Implement `update_task` MCP Tool Handler [x]
+
+### 4.8.1: Write comprehensive unit tests for the `update_task` handler [x]
+- **Status:** ✅ COMPLETED
+- **File:** `tests/unit/handlers/test_task_handlers.py`
+- **Details:** Added 16 comprehensive test cases for `TestUpdateTaskHandler` covering:
+  - Success scenarios with all fields and partial field updates
+  - Input validation (missing/empty task_item_id, no updates provided)
+  - Field validation (invalid status, priority, estimated_hours, actual_hours)
+  - Error handling (GitHub client not initialized, content not found, GraphQL errors)
+  - Field resolution errors (field not found, field option not found)
+  - API exceptions and edge cases
+
+### 4.8.2: Implement the `update_task_handler()` function [x]
+- **Status:** ✅ COMPLETED
+- **File:** `src/github_project_manager_mcp/handlers/task_handlers.py`
+- **Details:** Implemented comprehensive `update_task_handler()` function with:
+  - Parameter validation for task_item_id and update fields
+  - Content updates (title, description) via GitHub Issues API
+  - Project field updates (status, priority, estimated_hours, actual_hours) via GitHub Projects v2 API
+  - Field mapping and validation with proper error messages
+  - Two-phase update process with robust error handling
+
+### 4.8.3: Extend the ProjectQueryBuilder with task update methods [x]
+- **Status:** ✅ COMPLETED
+- **File:** `src/github_project_manager_mcp/utils/query_builder.py`
+- **Details:** Enhanced ProjectQueryBuilder with reusable methods:
+  - `get_project_item_fields()`: Query to retrieve project field definitions
+  - `update_project_item_field_value()`: Mutation to update single select field values
+  - Field mapping logic for status, priority, and time tracking fields
+
+### 4.8.4: Register the `update_task` tool in the MCP server [x]
+- **Status:** ✅ COMPLETED
+- **File:** `src/github_project_manager_mcp/mcp_server_fastmcp.py`
+- **Details:** Successfully registered the `update_task` tool with:
+  - Complete parameter schema (task_item_id, title, description, status, priority, estimated_hours, actual_hours)
+  - Proper type definitions and descriptions
+  - Integration with FastMCP server
+  - All tests passing (292/292)
+
+## ✅ Live Testing Results:
+- **Tool Registration:** ✅ `update_task` tool successfully appears in tool list
+- **Basic Updates:** ✅ Successfully updated task title, description, and status
+- **Status Changes:** ✅ Updated status from "Backlog" to "In Progress" to "Done"
+- **Field Validation:** ✅ Proper error handling for missing project fields (Priority, Estimated Hours not configured in test project)
+- **Error Handling:** ✅ Proper validation for invalid status values
+- **Test Suite:** ✅ All 292 tests passing
+
+The `update_task` functionality is fully operational and ready for production use!
+
+### Summary
+Task 4.8 is **COMPLETED** ✅. The update_task MCP tool handler provides comprehensive task update capabilities for GitHub Projects v2, including content updates, status management, priority changes, and time tracking. The implementation follows TDD methodology and includes robust error handling and validation.
+
+## ✅ Task 4.9.1: Implement `delete_task` MCP Tool Handler [x]
+
+### 4.9.1.1: Write comprehensive unit tests for the `delete_task` handler [x]
+- **Status:** ✅ COMPLETED
+- **File:** `tests/unit/handlers/test_task_handlers.py`
+- **Details:** Added 12 comprehensive test cases for `TestDeleteTaskHandler` covering:
+  - Success scenarios with different response formats
+  - Input validation (missing/empty project_id, task_item_id, confirmation)
+  - Confirmation requirement (missing confirmation, confirmation set to false)
+  - Error handling (GitHub client not initialized, GraphQL errors, API exceptions)
+  - Edge cases (no deleted item ID returned, direct response format)
+
+### 4.9.1.2: Implement the `delete_task_handler()` function [x]
+- **Status:** ✅ COMPLETED
+- **File:** `src/github_project_manager_mcp/handlers/task_handlers.py`
+- **Details:** Implemented comprehensive `delete_task_handler()` function with:
+  - Parameter validation for project_id, task_item_id, and confirmation
+  - Safety confirmation requirement to prevent accidental deletions
+  - GraphQL mutation via `_build_delete_task_mutation()` helper function
+  - Robust error handling and response validation
+  - Clear success and error messaging
+
+### 4.9.1.3: Create GraphQL mutation helper for task deletion [x]
+- **Status:** ✅ COMPLETED
+- **File:** `src/github_project_manager_mcp/handlers/task_handlers.py`
+- **Details:** Created `_build_delete_task_mutation()` helper function:
+  - Uses GitHub Projects v2 `deleteProjectV2Item` mutation
+  - Proper GraphQL string escaping via ProjectQueryBuilder
+  - Returns deletedItemId for verification
+
+### 4.9.1.4: Register the `delete_task` tool in the MCP server [x]
+- **Status:** ✅ COMPLETED
+- **File:** `src/github_project_manager_mcp/handlers/task_handlers.py`
+- **Details:** Successfully registered the `delete_task` tool with:
+  - Complete parameter schema (project_id, task_item_id, confirm)
+  - Proper type definitions and required field validation
+  - Safety confirmation parameter to prevent accidental deletions
+  - Added to TASK_TOOLS and TASK_TOOL_HANDLERS exports
+
+## ✅ Test Results:
+- **Unit Tests:** ✅ All 12 new delete_task tests passing
+- **Full Test Suite:** ✅ All 329 tests passing (317 existing + 12 new)
+- **TDD Methodology:** ✅ Red-Green-Refactor cycle followed successfully
+- **Pattern Consistency:** ✅ Follows same pattern as delete_prd_from_project
+
+### Summary
+Task 4.9.1 is **COMPLETED** ✅. The delete_task MCP tool handler provides safe task deletion capabilities for GitHub Projects v2, requiring explicit confirmation to prevent accidental deletions. The implementation follows TDD methodology with comprehensive test coverage and robust error handling. This completes the Task Level CRUD operations (100% complete)!

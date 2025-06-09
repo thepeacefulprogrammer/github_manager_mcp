@@ -108,11 +108,31 @@ try:
     from github_project_manager_mcp.handlers.prd_handlers import (
         list_prds_in_project_handler,
         update_prd_handler,
+        update_prd_status_handler,
     )
 
     logger.info("Successfully imported PRD handlers")
 except ImportError as e:
     logger.error(f"Failed to import PRD handlers: {e}")
+    logger.error(f"Traceback: {traceback.format_exc()}")
+    sys.exit(1)
+
+try:
+    from github_project_manager_mcp.handlers.task_handlers import (
+        create_task_handler,
+        delete_task_handler,
+    )
+    from github_project_manager_mcp.handlers.task_handlers import (
+        initialize_github_client as initialize_task_github_client,
+    )
+    from github_project_manager_mcp.handlers.task_handlers import (
+        list_tasks_handler,
+        update_task_handler,
+    )
+
+    logger.info("Successfully imported task handlers")
+except ImportError as e:
+    logger.error(f"Failed to import task handlers: {e}")
     logger.error(f"Traceback: {traceback.format_exc()}")
     sys.exit(1)
 
@@ -245,8 +265,9 @@ class GitHubProjectManagerMCPFastServer:
                 # Also initialize the global client for handlers
                 initialize_github_client(github_token)
                 initialize_prd_github_client(github_token)
+                initialize_task_github_client(github_token)
                 logger.info(
-                    "GitHub client initialized successfully for project and PRD handlers"
+                    "GitHub client initialized successfully for project, PRD, and task handlers"
                 )
             else:
                 logger.warning("GitHub client not initialized - no token available")
@@ -635,8 +656,234 @@ class GitHubProjectManagerMCPFastServer:
                 logger.error(f"Traceback: {traceback.format_exc()}")
                 return f'{{"success": false, "error": "Failed to delete PRD from project: {str(e)}"}}'
 
+        # Update PRD status tool
+        @self.mcp.tool()
+        async def update_prd_status(
+            prd_item_id: str,
+            status: str = None,
+            priority: str = None,
+        ) -> str:
+            """Update the status and/or priority fields of a Product Requirements Document (PRD) in a GitHub project using the Projects v2 field value update API."""
+            logger.info(
+                f"Update PRD status called: prd_item_id={prd_item_id}, status={status}, priority={priority}"
+            )
+
+            try:
+                await self._ensure_async_initialized()
+
+                if not self.github_client:
+                    return '{"success": false, "error": "GitHub client not initialized - check token configuration"}'
+
+                # Call the existing update PRD status handler
+                args = {
+                    "prd_item_id": prd_item_id,
+                }
+                if status is not None:
+                    args["status"] = status
+                if priority is not None:
+                    args["priority"] = priority
+
+                result = await update_prd_status_handler(args)
+                logger.info(f"Update PRD status result: {result}")
+
+                # Extract text content from CallToolResult
+                if hasattr(result, "content") and result.content:
+                    return result.content[0].text
+                else:
+                    return str(result)
+
+            except Exception as e:
+                logger.error(f"Error in update_prd_status: {e}")
+                logger.error(f"Traceback: {traceback.format_exc()}")
+                return f'{{"success": false, "error": "Failed to update PRD status: {str(e)}"}}'
+
+        # Update task tool
+        @self.mcp.tool()
+        async def update_task(
+            task_item_id: str,
+            title: str = None,
+            description: str = None,
+            status: str = None,
+            priority: str = None,
+            estimated_hours: int = None,
+            actual_hours: int = None,
+        ) -> str:
+            """Update a Task's content (title, description) and/or project field values (status, priority, estimated_hours, actual_hours)."""
+            logger.info(
+                f"Update task called: task_item_id={task_item_id}, title={title}, description={description}, status={status}, priority={priority}, estimated_hours={estimated_hours}, actual_hours={actual_hours}"
+            )
+
+            try:
+                await self._ensure_async_initialized()
+
+                if not self.github_client:
+                    return '{"success": false, "error": "GitHub client not initialized - check token configuration"}'
+
+                # Call the existing update task handler
+                args = {
+                    "task_item_id": task_item_id,
+                }
+                if title is not None:
+                    args["title"] = title
+                if description is not None:
+                    args["description"] = description
+                if status is not None:
+                    args["status"] = status
+                if priority is not None:
+                    args["priority"] = priority
+                if estimated_hours is not None:
+                    args["estimated_hours"] = estimated_hours
+                if actual_hours is not None:
+                    args["actual_hours"] = actual_hours
+
+                result = await update_task_handler(args)
+                logger.info(f"Update task result: {result}")
+
+                # Extract text content from CallToolResult
+                if hasattr(result, "content") and result.content:
+                    return result.content[0].text
+                else:
+                    return str(result)
+
+            except Exception as e:
+                logger.error(f"Error in update_task: {e}")
+                logger.error(f"Traceback: {traceback.format_exc()}")
+                return (
+                    f'{{"success": false, "error": "Failed to update task: {str(e)}"}}'
+                )
+
+        # Create task tool
+        @self.mcp.tool()
+        async def create_task(
+            project_id: str,
+            parent_prd_id: str,
+            title: str,
+            description: str = "",
+            priority: str = "Medium",
+            estimated_hours: int = None,
+        ) -> str:
+            """Create a new task and associate it with a parent PRD in a GitHub project. Tasks represent specific work items that need to be completed as part of a larger Product Requirements Document (PRD)."""
+            logger.info(
+                f"Create task called: project_id={project_id}, parent_prd_id={parent_prd_id}, title={title}, description={description}, priority={priority}, estimated_hours={estimated_hours}"
+            )
+
+            try:
+                await self._ensure_async_initialized()
+
+                if not self.github_client:
+                    return '{"success": false, "error": "GitHub client not initialized - check token configuration"}'
+
+                # Call the existing create task handler
+                args = {
+                    "project_id": project_id,
+                    "parent_prd_id": parent_prd_id,
+                    "title": title,
+                    "description": description,
+                    "priority": priority,
+                }
+                if estimated_hours is not None:
+                    args["estimated_hours"] = estimated_hours
+
+                result = await create_task_handler(args)
+                logger.info(f"Create task result: {result}")
+
+                # Extract text content from CallToolResult
+                if hasattr(result, "content") and result.content:
+                    return result.content[0].text
+                else:
+                    return str(result)
+
+            except Exception as e:
+                logger.error(f"Error in create_task: {e}")
+                logger.error(f"Traceback: {traceback.format_exc()}")
+                return (
+                    f'{{"success": false, "error": "Failed to create task: {str(e)}"}}'
+                )
+
+        # List tasks tool
+        @self.mcp.tool()
+        async def list_tasks(
+            project_id: str,
+            parent_prd_id: str = None,
+            first: int = 25,
+            after: str = None,
+        ) -> str:
+            """List tasks in a GitHub project with optional filtering by parent PRD. Supports pagination and returns detailed information about each task including status, priority, parent PRD, and metadata."""
+            logger.info(
+                f"List tasks called: project_id={project_id}, parent_prd_id={parent_prd_id}, first={first}, after={after}"
+            )
+
+            try:
+                await self._ensure_async_initialized()
+
+                if not self.github_client:
+                    return '{"success": false, "error": "GitHub client not initialized - check token configuration"}'
+
+                # Call the existing list tasks handler
+                args = {
+                    "project_id": project_id,
+                    "first": first,
+                }
+                if parent_prd_id is not None:
+                    args["parent_prd_id"] = parent_prd_id
+                if after is not None:
+                    args["after"] = after
+
+                result = await list_tasks_handler(args)
+                logger.info(f"List tasks result: {result}")
+
+                # Extract text content from CallToolResult
+                if hasattr(result, "content") and result.content:
+                    return result.content[0].text
+                else:
+                    return str(result)
+
+            except Exception as e:
+                logger.error(f"Error in list_tasks: {e}")
+                logger.error(f"Traceback: {traceback.format_exc()}")
+                return (
+                    f'{{"success": false, "error": "Failed to list tasks: {str(e)}"}}'
+                )
+
+        # Delete task tool
+        @self.mcp.tool()
+        async def delete_task(project_id: str, task_item_id: str, confirm: bool) -> str:
+            """Delete a task from a GitHub project. This action is permanent and cannot be undone."""
+            logger.info(
+                f"Delete task called: project_id={project_id}, task_item_id={task_item_id}, confirm={confirm}"
+            )
+
+            try:
+                await self._ensure_async_initialized()
+
+                if not self.github_client:
+                    return '{"success": false, "error": "GitHub client not initialized - check token configuration"}'
+
+                # Call the existing delete task handler
+                args = {
+                    "project_id": project_id,
+                    "task_item_id": task_item_id,
+                    "confirm": confirm,
+                }
+
+                result = await delete_task_handler(args)
+                logger.info(f"Delete task result: {result}")
+
+                # Extract text content from CallToolResult
+                if hasattr(result, "content") and result.content:
+                    return result.content[0].text
+                else:
+                    return str(result)
+
+            except Exception as e:
+                logger.error(f"Error in delete_task: {e}")
+                logger.error(f"Traceback: {traceback.format_exc()}")
+                return (
+                    f'{{"success": false, "error": "Failed to delete task: {str(e)}"}}'
+                )
+
         logger.info(
-            f"Registered {len([test_connection, create_project, list_projects, update_project, delete_project, get_project_details, list_prds_in_project, update_prd, add_prd_to_project, delete_prd_from_project])} MCP tools"
+            f"Registered {len([test_connection, create_project, list_projects, update_project, delete_project, get_project_details, list_prds_in_project, update_prd, add_prd_to_project, delete_prd_from_project, update_prd_status, create_task, list_tasks, update_task, delete_task])} MCP tools"
         )
 
 

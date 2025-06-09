@@ -564,6 +564,128 @@ query {{
         logger.debug(f"Built list PRDs in project query for ID: {project_id}")
         return query
 
+    def list_tasks_in_project(
+        self,
+        project_id: str,
+        parent_prd_id: Optional[str] = None,
+        first: Optional[int] = None,
+        after: Optional[str] = None,
+    ) -> str:
+        """
+        Build a query to list Tasks (draft issues marked as tasks) in a project.
+
+        Tasks are identified by having a "Parent PRD" field value or being specifically
+        marked as tasks in their content structure.
+
+        Args:
+            project_id: GitHub project ID
+            parent_prd_id: Optional PRD ID to filter tasks by parent
+            first: Number of items to fetch (pagination)
+            after: Cursor for pagination
+
+        Returns:
+            GraphQL query string
+
+        Raises:
+            ValueError: If project_id is empty or None
+        """
+        if not project_id:
+            raise ValueError("Project ID is required")
+
+        pagination_args = self._build_pagination_args(first, after)
+
+        pagination_info = ""
+        if first is not None or after is not None:
+            pagination_info = """
+        pageInfo {
+          hasNextPage
+          hasPreviousPage
+          startCursor
+          endCursor
+        }"""
+
+        # Similar structure to list_prds_in_project but focused on tasks
+        query = f"""
+query {{
+  node(id: {self._escape_string(project_id)}) {{
+    ... on ProjectV2 {{
+      title
+      items{pagination_args} {{
+        totalCount{pagination_info}
+        nodes {{
+          id
+          createdAt
+          updatedAt
+          content {{
+            ... on DraftIssue {{
+              id
+              title
+              body
+              createdAt
+              updatedAt
+              assignees(first: 50) {{
+                totalCount
+                nodes {{
+                  login
+                  name
+                }}
+              }}
+            }}
+            ... on Issue {{
+              id
+              title
+              body
+              number
+              state
+              createdAt
+              updatedAt
+              assignees(first: 50) {{
+                totalCount
+                nodes {{
+                  login
+                  name
+                }}
+              }}
+              repository {{
+                name
+                owner {{
+                  login
+                }}
+              }}
+            }}
+          }}
+          fieldValues(first: 10) {{
+            nodes {{
+              ... on ProjectV2ItemFieldTextValue {{
+                text
+                field {{
+                  ... on ProjectV2Field {{
+                    name
+                  }}
+                }}
+              }}
+              ... on ProjectV2ItemFieldSingleSelectValue {{
+                name
+                field {{
+                  ... on ProjectV2SingleSelectField {{
+                    name
+                  }}
+                }}
+              }}
+            }}
+          }}
+        }}
+      }}
+    }}
+  }}
+}}
+""".strip()
+
+        logger.debug(
+            f"Built list tasks in project query for ID: {project_id}, parent PRD: {parent_prd_id}"
+        )
+        return query
+
     def update_prd(
         self,
         prd_item_id: str,
@@ -680,4 +802,252 @@ query {{
 """.strip()
 
         logger.debug(f"Built get PRD content ID query for item ID: {prd_item_id}")
+        return query
+
+    def get_project_item_fields(self, project_item_id: str) -> str:
+        """
+        Build a query to get project item and its available fields for field value updates.
+
+        Args:
+            project_item_id: GitHub project item ID
+
+        Returns:
+            GraphQL query string
+
+        Raises:
+            ValueError: If project_item_id is empty or None
+        """
+        if not project_item_id:
+            raise ValueError("Project item ID is required")
+
+        query = f"""
+query {{
+  node(id: {self._escape_string(project_item_id)}) {{
+    ... on ProjectV2Item {{
+      id
+      project {{
+        id
+        fields(first: 50) {{
+          nodes {{
+            ... on ProjectV2SingleSelectField {{
+              id
+              name
+              dataType
+              options {{
+                id
+                name
+              }}
+            }}
+          }}
+        }}
+      }}
+    }}
+  }}
+}}
+""".strip()
+
+        logger.debug(f"Built get project item fields query for ID: {project_item_id}")
+        return query
+
+    def update_project_item_field_value(
+        self,
+        project_id: str,
+        item_id: str,
+        field_id: str,
+        single_select_option_id: str,
+    ) -> str:
+        """
+        Build a mutation to update a single select field value for a project item.
+
+        Args:
+            project_id: GitHub project ID
+            item_id: GitHub project item ID
+            field_id: Field ID to update
+            single_select_option_id: Option ID for the single select field
+
+        Returns:
+            GraphQL mutation string
+
+        Raises:
+            ValueError: If any required parameter is empty or None
+        """
+        if not project_id:
+            raise ValueError("Project ID is required")
+        if not item_id:
+            raise ValueError("Item ID is required")
+        if not field_id:
+            raise ValueError("Field ID is required")
+        if not single_select_option_id:
+            raise ValueError("Single select option ID is required")
+
+        mutation = f"""
+mutation {{
+  updateProjectV2ItemFieldValue(input: {{
+    projectId: {self._escape_string(project_id)}
+    itemId: {self._escape_string(item_id)}
+    fieldId: {self._escape_string(field_id)}
+    value: {{
+      singleSelectOptionId: {self._escape_string(single_select_option_id)}
+    }}
+  }}) {{
+    projectV2Item {{
+      id
+      updatedAt
+    }}
+  }}
+}}
+""".strip()
+
+        logger.debug(f"Built update field value mutation for item: {item_id}")
+        return mutation
+
+    def update_project_item_number_field_value(
+        self,
+        project_id: str,
+        item_id: str,
+        field_id: str,
+        number_value: int,
+    ) -> str:
+        """
+        Build a mutation to update a number field value for a project item.
+
+        Args:
+            project_id: GitHub project ID
+            item_id: GitHub project item ID
+            field_id: Field ID to update
+            number_value: Number value for the field
+
+        Returns:
+            GraphQL mutation string
+
+        Raises:
+            ValueError: If any required parameter is empty or None
+        """
+        if not project_id:
+            raise ValueError("Project ID is required")
+        if not item_id:
+            raise ValueError("Item ID is required")
+        if not field_id:
+            raise ValueError("Field ID is required")
+        if number_value is None:
+            raise ValueError("Number value is required")
+
+        mutation = f"""
+mutation {{
+  updateProjectV2ItemFieldValue(input: {{
+    projectId: {self._escape_string(project_id)}
+    itemId: {self._escape_string(item_id)}
+    fieldId: {self._escape_string(field_id)}
+    value: {{
+      number: {number_value}
+    }}
+  }}) {{
+    projectV2Item {{
+      id
+      updatedAt
+    }}
+  }}
+}}
+""".strip()
+
+        logger.debug(f"Built update number field value mutation for item: {item_id}")
+        return mutation
+
+    def update_task(
+        self,
+        task_item_id: str,
+        title: Optional[str] = None,
+        description: Optional[str] = None,
+    ) -> str:
+        """
+        Build a GraphQL mutation to update a Task's draft issue content.
+
+        Args:
+            task_item_id: GitHub project item ID containing the draft issue
+            title: New title for the Task
+            description: New description content for the Task
+
+        Returns:
+            GraphQL mutation string to update the draft issue
+
+        Raises:
+            ValueError: If task_item_id is empty or None, or no updates provided
+        """
+        if not task_item_id:
+            raise ValueError("Task item ID is required")
+
+        if not any([title is not None, description is not None]):
+            raise ValueError("At least one field must be provided for update")
+
+        # Build the input fields for the mutation
+        input_fields = [f"draftIssueId: {self._escape_string(task_item_id)}"]
+
+        if title is not None:
+            input_fields.append(f"title: {self._escape_string(title)}")
+
+        if description is not None:
+            input_fields.append(f"body: {self._escape_string(description)}")
+
+        input_str = ", ".join(input_fields)
+
+        mutation = f"""
+mutation {{
+  updateProjectV2DraftIssue(input: {{
+    {input_str}
+  }}) {{
+    draftIssue {{
+      id
+      title
+      body
+      createdAt
+      updatedAt
+      projectV2Items(first: 10) {{
+        totalCount
+        nodes {{
+          id
+          project {{
+            id
+            title
+          }}
+        }}
+      }}
+    }}
+  }}
+}}
+""".strip()
+
+        logger.debug(f"Built update Task mutation for draft issue ID: {task_item_id}")
+        return mutation
+
+    def get_task_content_id(self, task_item_id: str) -> str:
+        """
+        Build a query to get the draft issue content ID from a task project item ID.
+
+        Args:
+            task_item_id: GitHub project item ID (PVTI_...)
+
+        Returns:
+            GraphQL query string to get the content ID
+
+        Raises:
+            ValueError: If task_item_id is empty or None
+        """
+        if not task_item_id:
+            raise ValueError("Task item ID is required")
+
+        query = f"""
+query {{
+  node(id: {self._escape_string(task_item_id)}) {{
+    ... on ProjectV2Item {{
+      content {{
+        ... on DraftIssue {{
+          id
+        }}
+      }}
+    }}
+  }}
+}}
+""".strip()
+
+        logger.debug(f"Built get Task content ID query for item ID: {task_item_id}")
         return query

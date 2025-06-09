@@ -1075,6 +1075,291 @@ async def update_prd_handler(arguments: Dict[str, Any]) -> CallToolResult:
         )
 
 
+async def update_prd_status_handler(arguments: Dict[str, Any]) -> CallToolResult:
+    """
+    Handle update_prd_status tool calls.
+
+    Updates the status and/or priority fields of a Product Requirements Document
+    in a GitHub project using the Projects v2 field value update API.
+
+    Args:
+        arguments: Tool call arguments containing:
+            - prd_item_id (required): GitHub project item ID
+            - status (optional): New PRD status value
+            - priority (optional): New PRD priority value
+
+    Returns:
+        CallToolResult with operation results
+    """
+    try:
+        # Validate required parameters
+        prd_item_id = arguments.get("prd_item_id", "").strip()
+
+        if not prd_item_id:
+            return CallToolResult(
+                content=[
+                    TextContent(
+                        type="text",
+                        text="Error: prd_item_id is required to update PRD status",
+                    )
+                ],
+                isError=True,
+            )
+
+        # Extract optional update parameters
+        status_str = arguments.get("status")
+        priority_str = arguments.get("priority")
+
+        # Validate that at least one update field is provided
+        if status_str is None and priority_str is None:
+            return CallToolResult(
+                content=[
+                    TextContent(
+                        type="text",
+                        text="Error: At least one update field (status or priority) must be provided",
+                    )
+                ],
+                isError=True,
+            )
+
+        # Validate status if provided
+        if status_str is not None:
+            try:
+                status = PRDStatus(status_str)
+            except ValueError:
+                valid_statuses = [s.value for s in PRDStatus]
+                return CallToolResult(
+                    content=[
+                        TextContent(
+                            type="text",
+                            text=f"Error: Invalid status '{status_str}'. Valid values: {', '.join(valid_statuses)}",
+                        )
+                    ],
+                    isError=True,
+                )
+
+        # Validate priority if provided
+        if priority_str is not None:
+            try:
+                priority = PRDPriority(priority_str)
+            except ValueError:
+                valid_priorities = [p.value for p in PRDPriority]
+                return CallToolResult(
+                    content=[
+                        TextContent(
+                            type="text",
+                            text=f"Error: Invalid priority '{priority_str}'. Valid values: {', '.join(valid_priorities)}",
+                        )
+                    ],
+                    isError=True,
+                )
+
+        # Get GitHub client
+        client = get_github_client()
+        if client is None:
+            return CallToolResult(
+                content=[
+                    TextContent(
+                        type="text",
+                        text="Error: GitHub client not initialized. Please check your authentication settings.",
+                    )
+                ],
+                isError=True,
+            )
+
+        # Get project item details and field definitions
+        query_builder = ProjectQueryBuilder()
+        fields_query = query_builder.get_project_item_fields(prd_item_id)
+
+        logger.info(f"Fetching project item fields for PRD: {prd_item_id}")
+        fields_response = await client.query(fields_query)
+
+        # Check for GraphQL errors
+        if "errors" in fields_response:
+            error_messages = [error["message"] for error in fields_response["errors"]]
+            return CallToolResult(
+                content=[
+                    TextContent(
+                        type="text",
+                        text=f"Error: GraphQL errors occurred: {'; '.join(error_messages)}",
+                    )
+                ],
+                isError=True,
+            )
+
+        # Validate project item exists
+        if not fields_response.get("node"):
+            return CallToolResult(
+                content=[
+                    TextContent(
+                        type="text",
+                        text=f"Error: Project item not found: {prd_item_id}",
+                    )
+                ],
+                isError=True,
+            )
+
+        project_item_data = fields_response["node"]
+        project_data = project_item_data["project"]
+        project_id = project_data["id"]
+
+        # Parse available fields
+        available_fields = {}
+        for field in project_data["fields"]["nodes"]:
+            # Skip empty field objects
+            if not field or "name" not in field:
+                continue
+            field_name = field["name"]
+            field_id = field["id"]
+            field_options = {opt["name"]: opt["id"] for opt in field.get("options", [])}
+            available_fields[field_name] = {
+                "id": field_id,
+                "options": field_options,
+            }
+
+        # Track successful updates
+        updated_fields = []
+
+        # Update status if provided
+        if status_str is not None:
+            if "Status" not in available_fields:
+                return CallToolResult(
+                    content=[
+                        TextContent(
+                            type="text",
+                            text="Error: Status field not found in project",
+                        )
+                    ],
+                    isError=True,
+                )
+
+            status_field = available_fields["Status"]
+            if status_str not in status_field["options"]:
+                available_options = list(status_field["options"].keys())
+                return CallToolResult(
+                    content=[
+                        TextContent(
+                            type="text",
+                            text=f"Error: Status option '{status_str}' not found. Available options: {', '.join(available_options)}",
+                        )
+                    ],
+                    isError=True,
+                )
+
+            # Update status field
+            status_mutation = query_builder.update_project_item_field_value(
+                project_id=project_id,
+                item_id=prd_item_id,
+                field_id=status_field["id"],
+                single_select_option_id=status_field["options"][status_str],
+            )
+
+            logger.info(f"Updating status to '{status_str}' for PRD: {prd_item_id}")
+            status_response = await client.mutate(status_mutation)
+
+            if "errors" in status_response:
+                error_messages = [
+                    error["message"] for error in status_response["errors"]
+                ]
+                return CallToolResult(
+                    content=[
+                        TextContent(
+                            type="text",
+                            text=f"Error updating status: {'; '.join(error_messages)}",
+                        )
+                    ],
+                    isError=True,
+                )
+
+            updated_fields.append(f"status to '{status_str}'")
+
+        # Update priority if provided
+        if priority_str is not None:
+            if "Priority" not in available_fields:
+                return CallToolResult(
+                    content=[
+                        TextContent(
+                            type="text",
+                            text="Error: Priority field not found in project",
+                        )
+                    ],
+                    isError=True,
+                )
+
+            priority_field = available_fields["Priority"]
+            if priority_str not in priority_field["options"]:
+                available_options = list(priority_field["options"].keys())
+                return CallToolResult(
+                    content=[
+                        TextContent(
+                            type="text",
+                            text=f"Error: Priority option '{priority_str}' not found. Available options: {', '.join(available_options)}",
+                        )
+                    ],
+                    isError=True,
+                )
+
+            # Update priority field
+            priority_mutation = query_builder.update_project_item_field_value(
+                project_id=project_id,
+                item_id=prd_item_id,
+                field_id=priority_field["id"],
+                single_select_option_id=priority_field["options"][priority_str],
+            )
+
+            logger.info(f"Updating priority to '{priority_str}' for PRD: {prd_item_id}")
+            priority_response = await client.mutate(priority_mutation)
+
+            if "errors" in priority_response:
+                error_messages = [
+                    error["message"] for error in priority_response["errors"]
+                ]
+                return CallToolResult(
+                    content=[
+                        TextContent(
+                            type="text",
+                            text=f"Error updating priority: {'; '.join(error_messages)}",
+                        )
+                    ],
+                    isError=True,
+                )
+
+            updated_fields.append(f"priority to '{priority_str}'")
+
+        # Build success response
+        updates_text = " and ".join(updated_fields)
+        response_text = f"""✅ PRD field values successfully updated!
+
+**Updated PRD:** {prd_item_id}
+**Updates Applied:** {updates_text}
+**Project:** {project_id}
+
+The field values have been updated in the GitHub project."""
+
+        logger.info(f"Successfully updated PRD field values: {prd_item_id}")
+        return CallToolResult(
+            content=[
+                TextContent(
+                    type="text",
+                    text=response_text,
+                )
+            ],
+            isError=False,
+        )
+
+    except Exception as e:
+        logger.error(f"Unexpected error in update_prd_status_handler: {e}")
+        return CallToolResult(
+            content=[
+                TextContent(
+                    type="text",
+                    text=f"Error: An unexpected error occurred while updating PRD status: {str(e)}",
+                )
+            ],
+            isError=True,
+        )
+
+
 # Define MCP tools for PRD management
 PRD_TOOLS = [
     Tool(
@@ -1210,6 +1495,38 @@ PRD_TOOLS = [
             "additionalProperties": False,
         },
     ),
+    Tool(
+        name="update_prd_status",
+        description="Update the status and/or priority fields of a Product Requirements Document (PRD) in a GitHub project using the Projects v2 field value update API",
+        inputSchema={
+            "type": "object",
+            "properties": {
+                "prd_item_id": {
+                    "type": "string",
+                    "description": "GitHub project item ID to update (e.g., 'PVTI_kwDOBQfyVc0FoQ')",
+                },
+                "status": {
+                    "type": "string",
+                    "description": "New PRD status value",
+                    "enum": [
+                        "Backlog",
+                        "This Sprint",
+                        "Up Next",
+                        "In Progress",
+                        "Done",
+                        "Cancelled",
+                    ],
+                },
+                "priority": {
+                    "type": "string",
+                    "description": "New PRD priority level",
+                    "enum": ["Low", "Medium", "High", "Critical"],
+                },
+            },
+            "required": ["prd_item_id"],
+            "additionalProperties": False,
+        },
+    ),
 ]
 
 # Map tool names to handler functions
@@ -1218,4 +1535,5 @@ PRD_TOOL_HANDLERS = {
     "list_prds_in_project": list_prds_in_project_handler,
     "delete_prd_from_project": delete_prd_from_project_handler,
     "update_prd": update_prd_handler,
+    "update_prd_status": update_prd_status_handler,
 }
