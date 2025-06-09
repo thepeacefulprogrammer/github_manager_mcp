@@ -13,7 +13,9 @@ from mcp.types import CallToolResult, TextContent
 
 from src.github_project_manager_mcp.handlers.subtask_handlers import (
     add_subtask_handler,
+    delete_subtask_handler,
     list_subtasks_handler,
+    update_subtask_handler,
 )
 
 
@@ -686,4 +688,651 @@ class TestListSubtasksHandler:
 
         assert result.isError
         assert "Error listing subtasks" in result.content[0].text
+        assert "Network timeout" in result.content[0].text
+
+
+class TestUpdateSubtaskHandler:
+    """Test cases for the update_subtask_handler function."""
+
+    @pytest.mark.asyncio
+    async def test_update_subtask_success_all_fields(self):
+        """Test successful subtask update with all fields."""
+        mock_client = AsyncMock()
+
+        # Mock the issue content retrieval
+        mock_content_response = {
+            "node": {
+                "id": "PVTI_test123",
+                "content": {
+                    "title": "Old Subtask Title",
+                    "body": "Old description\n\n## Subtask Metadata\n- **Type:** Subtask\n- **Parent Task ID:** PVTI_parent123\n- **Order:** 1\n- **Status:** Incomplete",
+                },
+            }
+        }
+
+        # Mock the issue update
+        mock_update_response = {
+            "updateIssue": {
+                "issue": {
+                    "id": "PVTI_test123",
+                    "title": "Updated Subtask Title",
+                    "body": "Updated description\n\n## Subtask Metadata\n- **Type:** Subtask\n- **Parent Task ID:** PVTI_parent123\n- **Order:** 2\n- **Status:** Complete",
+                }
+            }
+        }
+
+        mock_client.query.return_value = mock_content_response
+        mock_client.mutate.return_value = mock_update_response
+
+        with patch(
+            "src.github_project_manager_mcp.handlers.subtask_handlers.get_github_client",
+            return_value=mock_client,
+        ):
+            result = await update_subtask_handler(
+                {
+                    "subtask_item_id": "PVTI_test123",
+                    "title": "Updated Subtask Title",
+                    "description": "Updated description",
+                    "status": "Complete",
+                    "order": 2,
+                }
+            )
+
+        assert not result.isError
+        assert "Subtask updated successfully!" in result.content[0].text
+        assert "Updated Subtask Title" in result.content[0].text
+        assert "Complete" in result.content[0].text
+
+    @pytest.mark.asyncio
+    async def test_update_subtask_success_partial_fields(self):
+        """Test successful subtask update with only some fields."""
+        mock_client = AsyncMock()
+
+        mock_content_response = {
+            "node": {
+                "id": "PVTI_test123",
+                "content": {
+                    "title": "Original Title",
+                    "body": "Original description\n\n## Subtask Metadata\n- **Type:** Subtask\n- **Parent Task ID:** PVTI_parent123\n- **Order:** 1\n- **Status:** Incomplete",
+                },
+            }
+        }
+
+        mock_update_response = {
+            "updateIssue": {
+                "issue": {
+                    "id": "PVTI_test123",
+                    "title": "Updated Title Only",
+                    "body": "Original description\n\n## Subtask Metadata\n- **Type:** Subtask\n- **Parent Task ID:** PVTI_parent123\n- **Order:** 1\n- **Status:** Incomplete",
+                }
+            }
+        }
+
+        mock_client.query.return_value = mock_content_response
+        mock_client.mutate.return_value = mock_update_response
+
+        with patch(
+            "src.github_project_manager_mcp.handlers.subtask_handlers.get_github_client",
+            return_value=mock_client,
+        ):
+            result = await update_subtask_handler(
+                {
+                    "subtask_item_id": "PVTI_test123",
+                    "title": "Updated Title Only",
+                }
+            )
+
+        assert not result.isError
+        assert "Subtask updated successfully!" in result.content[0].text
+        assert "Updated Title Only" in result.content[0].text
+
+    @pytest.mark.asyncio
+    async def test_update_subtask_success_status_only(self):
+        """Test successful subtask status update only."""
+        mock_client = AsyncMock()
+
+        mock_content_response = {
+            "node": {
+                "id": "PVTI_test123",
+                "content": {
+                    "title": "Test Subtask",
+                    "body": "Description\n\n## Subtask Metadata\n- **Type:** Subtask\n- **Parent Task ID:** PVTI_parent123\n- **Order:** 1\n- **Status:** Incomplete",
+                },
+            }
+        }
+
+        mock_update_response = {
+            "updateIssue": {
+                "issue": {
+                    "id": "PVTI_test123",
+                    "title": "Test Subtask",
+                    "body": "Description\n\n## Subtask Metadata\n- **Type:** Subtask\n- **Parent Task ID:** PVTI_parent123\n- **Order:** 1\n- **Status:** Complete",
+                }
+            }
+        }
+
+        mock_client.query.return_value = mock_content_response
+        mock_client.mutate.return_value = mock_update_response
+
+        with patch(
+            "src.github_project_manager_mcp.handlers.subtask_handlers.get_github_client",
+            return_value=mock_client,
+        ):
+            result = await update_subtask_handler(
+                {
+                    "subtask_item_id": "PVTI_test123",
+                    "status": "Complete",
+                }
+            )
+
+        assert not result.isError
+        assert "Subtask updated successfully!" in result.content[0].text
+        assert "Complete" in result.content[0].text
+
+    @pytest.mark.asyncio
+    async def test_update_subtask_missing_subtask_item_id(self):
+        """Test error handling when subtask_item_id is missing."""
+        result = await update_subtask_handler(
+            {
+                "title": "New Title",
+            }
+        )
+
+        assert result.isError
+        assert "subtask_item_id is required" in result.content[0].text
+
+    @pytest.mark.asyncio
+    async def test_update_subtask_empty_subtask_item_id(self):
+        """Test error handling when subtask_item_id is empty."""
+        result = await update_subtask_handler(
+            {
+                "subtask_item_id": "   ",
+                "title": "New Title",
+            }
+        )
+
+        assert result.isError
+        assert "subtask_item_id is required" in result.content[0].text
+
+    @pytest.mark.asyncio
+    async def test_update_subtask_no_updates_provided(self):
+        """Test error handling when no update fields are provided."""
+        result = await update_subtask_handler(
+            {
+                "subtask_item_id": "PVTI_test123",
+            }
+        )
+
+        assert result.isError
+        assert (
+            "At least one field must be provided for update" in result.content[0].text
+        )
+
+    @pytest.mark.asyncio
+    async def test_update_subtask_invalid_status(self):
+        """Test error handling when status is invalid."""
+        result = await update_subtask_handler(
+            {
+                "subtask_item_id": "PVTI_test123",
+                "status": "InvalidStatus",
+            }
+        )
+
+        assert result.isError
+        assert "Invalid status value" in result.content[0].text
+        assert "Valid values are: Incomplete, Complete" in result.content[0].text
+
+    @pytest.mark.asyncio
+    async def test_update_subtask_invalid_order_negative(self):
+        """Test error handling when order is negative."""
+        result = await update_subtask_handler(
+            {
+                "subtask_item_id": "PVTI_test123",
+                "order": -1,
+            }
+        )
+
+        assert result.isError
+        assert "order must be a positive integer" in result.content[0].text
+
+    @pytest.mark.asyncio
+    async def test_update_subtask_invalid_order_zero(self):
+        """Test error handling when order is zero."""
+        result = await update_subtask_handler(
+            {
+                "subtask_item_id": "PVTI_test123",
+                "order": 0,
+            }
+        )
+
+        assert result.isError
+        assert "order must be a positive integer" in result.content[0].text
+
+    @pytest.mark.asyncio
+    async def test_update_subtask_invalid_order_non_integer(self):
+        """Test error handling when order is not an integer."""
+        result = await update_subtask_handler(
+            {
+                "subtask_item_id": "PVTI_test123",
+                "order": "invalid",
+            }
+        )
+
+        assert result.isError
+        assert "order must be a positive integer" in result.content[0].text
+
+    @pytest.mark.asyncio
+    async def test_update_subtask_github_client_not_initialized(self):
+        """Test error handling when GitHub client is not initialized."""
+        with patch(
+            "src.github_project_manager_mcp.handlers.subtask_handlers.get_github_client",
+            return_value=None,
+        ):
+            result = await update_subtask_handler(
+                {
+                    "subtask_item_id": "PVTI_test123",
+                    "title": "Updated Title",
+                }
+            )
+
+        assert result.isError
+        assert "GitHub client not initialized" in result.content[0].text
+
+    @pytest.mark.asyncio
+    async def test_update_subtask_content_not_found(self):
+        """Test error handling when subtask content is not found."""
+        mock_client = AsyncMock()
+        mock_client.query.return_value = {"node": None}
+
+        with patch(
+            "src.github_project_manager_mcp.handlers.subtask_handlers.get_github_client",
+            return_value=mock_client,
+        ):
+            result = await update_subtask_handler(
+                {
+                    "subtask_item_id": "PVTI_nonexistent",
+                    "title": "Updated Title",
+                }
+            )
+
+        assert result.isError
+        assert "Subtask not found" in result.content[0].text
+
+    @pytest.mark.asyncio
+    async def test_update_subtask_invalid_content_format(self):
+        """Test error handling when subtask content is in invalid format."""
+        mock_client = AsyncMock()
+        mock_content_response = {
+            "node": {
+                "id": "PVTI_test123",
+                "content": {
+                    "title": "Test Subtask",
+                    "body": "Invalid body without metadata",
+                },
+            }
+        }
+        mock_client.query.return_value = mock_content_response
+
+        with patch(
+            "src.github_project_manager_mcp.handlers.subtask_handlers.get_github_client",
+            return_value=mock_client,
+        ):
+            result = await update_subtask_handler(
+                {
+                    "subtask_item_id": "PVTI_test123",
+                    "title": "Updated Title",
+                }
+            )
+
+        assert result.isError
+        assert "Invalid subtask format" in result.content[0].text
+
+    @pytest.mark.asyncio
+    async def test_update_subtask_graphql_error(self):
+        """Test error handling when GraphQL query fails."""
+        mock_client = AsyncMock()
+        mock_client.query.side_effect = Exception("GraphQL error occurred")
+
+        with patch(
+            "src.github_project_manager_mcp.handlers.subtask_handlers.get_github_client",
+            return_value=mock_client,
+        ):
+            result = await update_subtask_handler(
+                {
+                    "subtask_item_id": "PVTI_test123",
+                    "title": "Updated Title",
+                }
+            )
+
+        assert result.isError
+        assert "Failed to retrieve subtask content" in result.content[0].text
+
+    @pytest.mark.asyncio
+    async def test_update_subtask_update_mutation_error(self):
+        """Test error handling when update mutation fails."""
+        mock_client = AsyncMock()
+
+        mock_content_response = {
+            "node": {
+                "id": "PVTI_test123",
+                "content": {
+                    "title": "Original Title",
+                    "body": "Description\n\n## Subtask Metadata\n- **Type:** Subtask\n- **Parent Task ID:** PVTI_parent123\n- **Order:** 1\n- **Status:** Incomplete",
+                },
+            }
+        }
+
+        mock_client.query.return_value = mock_content_response
+        mock_client.mutate.side_effect = Exception("Update mutation failed")
+
+        with patch(
+            "src.github_project_manager_mcp.handlers.subtask_handlers.get_github_client",
+            return_value=mock_client,
+        ):
+            result = await update_subtask_handler(
+                {
+                    "subtask_item_id": "PVTI_test123",
+                    "title": "Updated Title",
+                }
+            )
+
+        assert result.isError
+        assert "Failed to update subtask" in result.content[0].text
+
+    @pytest.mark.asyncio
+    async def test_update_subtask_no_update_response(self):
+        """Test error handling when update returns no response data."""
+        mock_client = AsyncMock()
+
+        mock_content_response = {
+            "node": {
+                "id": "PVTI_test123",
+                "content": {
+                    "title": "Original Title",
+                    "body": "Description\n\n## Subtask Metadata\n- **Type:** Subtask\n- **Parent Task ID:** PVTI_parent123\n- **Order:** 1\n- **Status:** Incomplete",
+                },
+            }
+        }
+
+        mock_client.query.return_value = mock_content_response
+        mock_client.mutate.return_value = None
+
+        with patch(
+            "src.github_project_manager_mcp.handlers.subtask_handlers.get_github_client",
+            return_value=mock_client,
+        ):
+            result = await update_subtask_handler(
+                {
+                    "subtask_item_id": "PVTI_test123",
+                    "title": "Updated Title",
+                }
+            )
+
+        assert result.isError
+        assert "No response data received" in result.content[0].text
+
+    @pytest.mark.asyncio
+    async def test_update_subtask_api_exception(self):
+        """Test error handling for general API exceptions."""
+        mock_client = AsyncMock()
+
+        mock_content_response = {
+            "node": {
+                "id": "PVTI_test123",
+                "content": {
+                    "title": "Original Title",
+                    "body": "Description\n\n## Subtask Metadata\n- **Type:** Subtask\n- **Parent Task ID:** PVTI_parent123\n- **Order:** 1\n- **Status:** Incomplete",
+                },
+            }
+        }
+
+        mock_client.query.return_value = mock_content_response
+        mock_client.mutate.side_effect = RuntimeError("API exception occurred")
+
+        with patch(
+            "src.github_project_manager_mcp.handlers.subtask_handlers.get_github_client",
+            return_value=mock_client,
+        ):
+            result = await update_subtask_handler(
+                {
+                    "subtask_item_id": "PVTI_test123",
+                    "title": "Updated Title",
+                }
+            )
+
+        assert result.isError
+        assert "API exception occurred" in result.content[0].text
+
+
+class TestDeleteSubtaskHandler:
+    """Test cases for the delete_subtask_handler function."""
+
+    @pytest.mark.asyncio
+    async def test_delete_subtask_success(self):
+        """Test successful subtask deletion with proper confirmation."""
+        mock_client = AsyncMock()
+        mock_response = {"deleteProjectV2Item": {"deletedItemId": "PVTI_test123"}}
+        mock_client.mutate.return_value = mock_response
+
+        with patch(
+            "src.github_project_manager_mcp.handlers.subtask_handlers.get_github_client",
+            return_value=mock_client,
+        ):
+            result = await delete_subtask_handler(
+                {
+                    "project_id": "PVT_test123",
+                    "subtask_item_id": "PVTI_test123",
+                    "confirm": True,
+                }
+            )
+
+        assert not result.isError
+        assert "Subtask deleted successfully!" in result.content[0].text
+        assert "PVTI_test123" in result.content[0].text
+
+    @pytest.mark.asyncio
+    async def test_delete_subtask_success_alternative_response_format(self):
+        """Test successful subtask deletion with alternative response format."""
+        mock_client = AsyncMock()
+        mock_response = {"deleteProjectV2Item": {"clientMutationId": "test"}}
+        mock_client.mutate.return_value = mock_response
+
+        with patch(
+            "src.github_project_manager_mcp.handlers.subtask_handlers.get_github_client",
+            return_value=mock_client,
+        ):
+            result = await delete_subtask_handler(
+                {
+                    "project_id": "PVT_test123",
+                    "subtask_item_id": "PVTI_test123",
+                    "confirm": True,
+                }
+            )
+
+        assert not result.isError
+        assert "Subtask deleted successfully!" in result.content[0].text
+
+    @pytest.mark.asyncio
+    async def test_delete_subtask_missing_project_id(self):
+        """Test error handling when project_id is missing."""
+        result = await delete_subtask_handler(
+            {
+                "subtask_item_id": "PVTI_test123",
+                "confirm": True,
+            }
+        )
+
+        assert result.isError
+        assert "project_id is required" in result.content[0].text
+
+    @pytest.mark.asyncio
+    async def test_delete_subtask_empty_project_id(self):
+        """Test error handling when project_id is empty."""
+        result = await delete_subtask_handler(
+            {
+                "project_id": "   ",
+                "subtask_item_id": "PVTI_test123",
+                "confirm": True,
+            }
+        )
+
+        assert result.isError
+        assert "project_id is required" in result.content[0].text
+
+    @pytest.mark.asyncio
+    async def test_delete_subtask_missing_subtask_item_id(self):
+        """Test error handling when subtask_item_id is missing."""
+        result = await delete_subtask_handler(
+            {
+                "project_id": "PVT_test123",
+                "confirm": True,
+            }
+        )
+
+        assert result.isError
+        assert "subtask_item_id is required" in result.content[0].text
+
+    @pytest.mark.asyncio
+    async def test_delete_subtask_empty_subtask_item_id(self):
+        """Test error handling when subtask_item_id is empty."""
+        result = await delete_subtask_handler(
+            {
+                "project_id": "PVT_test123",
+                "subtask_item_id": "",
+                "confirm": True,
+            }
+        )
+
+        assert result.isError
+        assert "subtask_item_id is required" in result.content[0].text
+
+    @pytest.mark.asyncio
+    async def test_delete_subtask_missing_confirmation(self):
+        """Test error handling when confirmation is missing."""
+        result = await delete_subtask_handler(
+            {
+                "project_id": "PVT_test123",
+                "subtask_item_id": "PVTI_test123",
+            }
+        )
+
+        assert result.isError
+        assert "Confirmation is required" in result.content[0].text
+
+    @pytest.mark.asyncio
+    async def test_delete_subtask_confirmation_false(self):
+        """Test error handling when confirmation is explicitly set to false."""
+        result = await delete_subtask_handler(
+            {
+                "project_id": "PVT_test123",
+                "subtask_item_id": "PVTI_test123",
+                "confirm": False,
+            }
+        )
+
+        assert result.isError
+        assert "Confirmation is required" in result.content[0].text
+
+    @pytest.mark.asyncio
+    async def test_delete_subtask_github_client_not_initialized(self):
+        """Test error handling when GitHub client is not initialized."""
+        with patch(
+            "src.github_project_manager_mcp.handlers.subtask_handlers.get_github_client",
+            return_value=None,
+        ):
+            result = await delete_subtask_handler(
+                {
+                    "project_id": "PVT_test123",
+                    "subtask_item_id": "PVTI_test123",
+                    "confirm": True,
+                }
+            )
+
+        assert result.isError
+        assert "GitHub client not initialized" in result.content[0].text
+
+    @pytest.mark.asyncio
+    async def test_delete_subtask_graphql_error(self):
+        """Test error handling when GraphQL mutation fails."""
+        mock_client = AsyncMock()
+        mock_client.mutate.side_effect = Exception("GraphQL error: Invalid subtask ID")
+
+        with patch(
+            "src.github_project_manager_mcp.handlers.subtask_handlers.get_github_client",
+            return_value=mock_client,
+        ):
+            result = await delete_subtask_handler(
+                {
+                    "project_id": "PVT_test123",
+                    "subtask_item_id": "PVTI_invalid",
+                    "confirm": True,
+                }
+            )
+
+        assert result.isError
+        assert "Failed to delete subtask" in result.content[0].text
+        assert "GraphQL error: Invalid subtask ID" in result.content[0].text
+
+    @pytest.mark.asyncio
+    async def test_delete_subtask_no_response_data(self):
+        """Test error handling when mutation returns no response data."""
+        mock_client = AsyncMock()
+        mock_client.mutate.return_value = None
+
+        with patch(
+            "src.github_project_manager_mcp.handlers.subtask_handlers.get_github_client",
+            return_value=mock_client,
+        ):
+            result = await delete_subtask_handler(
+                {
+                    "project_id": "PVT_test123",
+                    "subtask_item_id": "PVTI_test123",
+                    "confirm": True,
+                }
+            )
+
+        assert result.isError
+        assert "No response data received" in result.content[0].text
+
+    @pytest.mark.asyncio
+    async def test_delete_subtask_invalid_response_format(self):
+        """Test error handling when response format is unexpected."""
+        mock_client = AsyncMock()
+        mock_response = {"unexpected": "format"}
+        mock_client.mutate.return_value = mock_response
+
+        with patch(
+            "src.github_project_manager_mcp.handlers.subtask_handlers.get_github_client",
+            return_value=mock_client,
+        ):
+            result = await delete_subtask_handler(
+                {
+                    "project_id": "PVT_test123",
+                    "subtask_item_id": "PVTI_test123",
+                    "confirm": True,
+                }
+            )
+
+        assert result.isError
+        assert "Invalid response format" in result.content[0].text
+
+    @pytest.mark.asyncio
+    async def test_delete_subtask_api_exception(self):
+        """Test error handling for general API exceptions."""
+        mock_client = AsyncMock()
+        mock_client.mutate.side_effect = RuntimeError("Network timeout")
+
+        with patch(
+            "src.github_project_manager_mcp.handlers.subtask_handlers.get_github_client",
+            return_value=mock_client,
+        ):
+            result = await delete_subtask_handler(
+                {
+                    "project_id": "PVT_test123",
+                    "subtask_item_id": "PVTI_test123",
+                    "confirm": True,
+                }
+            )
+
+        assert result.isError
         assert "Network timeout" in result.content[0].text

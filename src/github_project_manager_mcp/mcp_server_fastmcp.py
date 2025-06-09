@@ -139,12 +139,14 @@ except ImportError as e:
 try:
     from github_project_manager_mcp.handlers.subtask_handlers import (
         add_subtask_handler,
+        delete_subtask_handler,
     )
     from github_project_manager_mcp.handlers.subtask_handlers import (
         initialize_github_client as initialize_subtask_github_client,
     )
     from github_project_manager_mcp.handlers.subtask_handlers import (
         list_subtasks_handler,
+        update_subtask_handler,
     )
 
     logger.info("Successfully imported subtask handlers")
@@ -984,6 +986,88 @@ class GitHubProjectManagerMCPFastServer:
                 logger.error(f"Error in list_subtasks: {e}")
                 logger.error(f"Traceback: {traceback.format_exc()}")
                 return f'{{"success": false, "error": "Failed to list subtasks: {str(e)}"}}'
+
+        @self.mcp.tool()
+        async def update_subtask(
+            subtask_item_id: str,
+            title: str = None,
+            description: str = None,
+            status: str = None,
+            order: int = None,
+        ) -> str:
+            """Update a subtask's content and status. Supports updating title, description, status, and order with comprehensive validation and metadata preservation."""
+            logger.info(
+                f"Update subtask called: subtask_item_id={subtask_item_id}, title={title}, description={description}, status={status}, order={order}"
+            )
+
+            try:
+                await self._ensure_async_initialized()
+
+                if not self.github_client:
+                    return '{"success": false, "error": "GitHub client not initialized - check token configuration"}'
+
+                # Call the existing update subtask handler
+                args = {
+                    "subtask_item_id": subtask_item_id,
+                }
+                if title is not None:
+                    args["title"] = title
+                if description is not None:
+                    args["description"] = description
+                if status is not None:
+                    args["status"] = status
+                if order is not None:
+                    args["order"] = order
+
+                result = await update_subtask_handler(args)
+                logger.info(f"Update subtask result: {result}")
+
+                # Extract text content from CallToolResult
+                if hasattr(result, "content") and result.content:
+                    return result.content[0].text
+                else:
+                    return str(result)
+
+            except Exception as e:
+                logger.error(f"Error in update_subtask: {e}")
+                logger.error(f"Traceback: {traceback.format_exc()}")
+                return f'{{"success": false, "error": "Failed to update subtask: {str(e)}"}}'
+
+        @self.mcp.tool()
+        async def delete_subtask(
+            project_id: str, subtask_item_id: str, confirm: bool
+        ) -> str:
+            """Delete a subtask from a GitHub project. This action is permanent and cannot be undone."""
+            logger.info(
+                f"Delete subtask called: project_id={project_id}, subtask_item_id={subtask_item_id}, confirm={confirm}"
+            )
+
+            try:
+                await self._ensure_async_initialized()
+
+                if not self.github_client:
+                    return '{"success": false, "error": "GitHub client not initialized - check token configuration"}'
+
+                # Call the existing delete subtask handler
+                args = {
+                    "project_id": project_id,
+                    "subtask_item_id": subtask_item_id,
+                    "confirm": confirm,
+                }
+
+                result = await delete_subtask_handler(args)
+                logger.info(f"Delete subtask result: {result}")
+
+                # Extract text content from CallToolResult
+                if hasattr(result, "content") and result.content:
+                    return result.content[0].text
+                else:
+                    return str(result)
+
+            except Exception as e:
+                logger.error(f"Error in delete_subtask: {e}")
+                logger.error(f"Traceback: {traceback.format_exc()}")
+                return f'{{"success": false, "error": "Failed to delete subtask: {str(e)}"}}'
 
         # Log successful tool registration
         logger.info("Successfully registered all MCP tools with FastMCP")

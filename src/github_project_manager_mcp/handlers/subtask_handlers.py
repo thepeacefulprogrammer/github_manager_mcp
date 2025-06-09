@@ -595,6 +595,644 @@ async def list_subtasks_handler(arguments: Dict[str, Any]) -> CallToolResult:
         )
 
 
+def _parse_subtask_metadata(body: str) -> Dict[str, Any]:
+    """
+    Parse subtask metadata from issue body.
+
+    Args:
+        body: Issue body content
+
+    Returns:
+        Dictionary with parsed metadata or None if invalid format
+    """
+    metadata = {}
+
+    if "## Subtask Metadata" not in body:
+        return None
+
+    # Extract metadata section
+    lines = body.split("\n")
+    in_metadata = False
+
+    for line in lines:
+        line = line.strip()
+        if line == "## Subtask Metadata":
+            in_metadata = True
+            continue
+        elif in_metadata and line.startswith("---"):
+            break  # End of metadata section
+        elif in_metadata and line.startswith("- **"):
+            # Parse metadata line: - **Key:** Value
+            if ":" in line:
+                key_part = line.split(":**")[0].replace("- **", "")
+                value_part = line.split(":**", 1)[1].strip()
+
+                # Map keys to internal format
+                if key_part == "Type":
+                    metadata["type"] = value_part
+                elif key_part == "Parent Task ID":
+                    metadata["parent_task_id"] = value_part
+                elif key_part == "Order":
+                    try:
+                        metadata["order"] = int(value_part)
+                    except ValueError:
+                        metadata["order"] = 1
+                elif key_part == "Status":
+                    metadata["status"] = value_part
+
+    return metadata
+
+
+def _update_subtask_metadata(
+    body: str,
+    new_description: Optional[str] = None,
+    new_status: Optional[str] = None,
+    new_order: Optional[int] = None,
+) -> str:
+    """
+    Update subtask metadata in issue body.
+
+    Args:
+        body: Original issue body
+        new_description: New description (if provided)
+        new_status: New status (if provided)
+        new_order: New order (if provided)
+
+    Returns:
+        Updated body with new metadata
+    """
+    # Parse existing metadata
+    metadata = _parse_subtask_metadata(body)
+    if not metadata:
+        raise ValueError("Invalid subtask format - metadata section not found")
+
+    # Update metadata values
+    if new_status is not None:
+        metadata["status"] = new_status
+    if new_order is not None:
+        metadata["order"] = new_order
+
+    # Split body into description and metadata sections
+    if "## Subtask Metadata" in body:
+        description_part = body.split("## Subtask Metadata")[0].strip()
+    else:
+        description_part = ""
+
+    # Use new description if provided, otherwise keep existing
+    if new_description is not None:
+        description_part = new_description.strip()
+
+    # Rebuild the body with updated metadata
+    lines = []
+
+    if description_part:
+        lines.append(description_part)
+        lines.append("")
+
+    lines.extend(
+        [
+            "## Subtask Metadata",
+            f"- **Type:** {metadata.get('type', 'Subtask')}",
+            f"- **Parent Task ID:** {metadata.get('parent_task_id', '')}",
+            f"- **Order:** {metadata.get('order', 1)}",
+            f"- **Status:** {metadata.get('status', 'Incomplete')}",
+            "",
+            "---",
+            "*This subtask was created via GitHub Project Manager MCP*",
+        ]
+    )
+
+    return "\n".join(lines)
+
+
+def _build_update_subtask_mutation(
+    subtask_item_id: str,
+    title: Optional[str] = None,
+    body: Optional[str] = None,
+) -> str:
+    """
+    Build GraphQL mutation for updating a subtask.
+
+    Args:
+        subtask_item_id: ID of the subtask item to update
+        title: New title (if provided)
+        body: New body content (if provided)
+
+    Returns:
+        GraphQL mutation string
+    """
+    query_builder = ProjectQueryBuilder()
+
+    # Build input fields
+    input_fields = []
+
+    if title is not None:
+        escaped_title = query_builder._escape_string(title)
+        input_fields.append(f"title: {escaped_title}")
+
+    if body is not None:
+        escaped_body = query_builder._escape_string(body)
+        input_fields.append(f"body: {escaped_body}")
+
+    input_str = ", ".join(input_fields)
+    escaped_id = query_builder._escape_string(subtask_item_id)
+
+    mutation = f"""
+mutation {{
+  updateIssue(input: {{
+    id: {escaped_id}
+    {input_str}
+  }}) {{
+    issue {{
+      id
+      title
+      body
+      updatedAt
+    }}
+  }}
+}}
+""".strip()
+
+    return mutation
+
+
+async def update_subtask_handler(arguments: Dict[str, Any]) -> CallToolResult:
+    """
+    Handle update_subtask tool calls.
+
+    Updates a Subtask's content and metadata within a GitHub project.
+    Supports updating title, description, status, and order with comprehensive
+    validation and metadata preservation.
+
+    Args:
+        arguments: Tool call arguments containing:
+            - subtask_item_id (required): GitHub item ID of the subtask
+            - title (optional): New subtask title
+            - description (optional): New subtask description
+            - status (optional): New status ("Incomplete" or "Complete")
+            - order (optional): New order position (positive integer)
+
+    Returns:
+        CallToolResult with operation results
+    """
+    try:
+        # Validate required parameters
+        subtask_item_id = arguments.get("subtask_item_id", "").strip()
+
+        if not subtask_item_id:
+            return CallToolResult(
+                content=[
+                    TextContent(
+                        type="text",
+                        text="Error: subtask_item_id is required to update subtask",
+                    )
+                ],
+                isError=True,
+            )
+
+        # Extract optional update parameters
+        new_title = arguments.get("title")
+        new_description = arguments.get("description")
+        new_status = arguments.get("status")
+        new_order = arguments.get("order")
+
+        # Validate that at least one field is provided for update
+        update_fields = [new_title, new_description, new_status, new_order]
+        if all(field is None for field in update_fields):
+            return CallToolResult(
+                content=[
+                    TextContent(
+                        type="text",
+                        text="Error: At least one field must be provided for update (title, description, status, or order)",
+                    )
+                ],
+                isError=True,
+            )
+
+        # Validate status if provided
+        if new_status is not None:
+            valid_statuses = ["Incomplete", "Complete"]
+            if new_status not in valid_statuses:
+                return CallToolResult(
+                    content=[
+                        TextContent(
+                            type="text",
+                            text=f"Error: Invalid status value '{new_status}'. Valid values are: {', '.join(valid_statuses)}",
+                        )
+                    ],
+                    isError=True,
+                )
+
+        # Validate order if provided
+        if new_order is not None:
+            try:
+                new_order = int(new_order)
+                if new_order <= 0:
+                    raise ValueError("Must be positive")
+            except (ValueError, TypeError):
+                return CallToolResult(
+                    content=[
+                        TextContent(
+                            type="text",
+                            text="Error: order must be a positive integer",
+                        )
+                    ],
+                    isError=True,
+                )
+
+        # Check if GitHub client is initialized
+        client = get_github_client()
+        if not client:
+            return CallToolResult(
+                content=[
+                    TextContent(
+                        type="text",
+                        text="Error: GitHub client not initialized. Please call initialize_github_client first.",
+                    )
+                ],
+                isError=True,
+            )
+
+        # First, retrieve the current subtask content
+        query_builder = ProjectQueryBuilder()
+        get_content_query = f"""
+query {{
+  node(id: "{subtask_item_id}") {{
+    id
+    ... on ProjectV2Item {{
+      content {{
+        ... on DraftIssue {{
+          title
+          body
+        }}
+      }}
+    }}
+  }}
+}}
+""".strip()
+
+        try:
+            content_response = await client.query(get_content_query)
+        except Exception as e:
+            logger.error(f"Error retrieving subtask content: {e}")
+            return CallToolResult(
+                content=[
+                    TextContent(
+                        type="text",
+                        text=f"Error: Failed to retrieve subtask content: {str(e)}",
+                    )
+                ],
+                isError=True,
+            )
+
+        # Validate content response
+        if (
+            not content_response
+            or "node" not in content_response
+            or not content_response["node"]
+        ):
+            return CallToolResult(
+                content=[
+                    TextContent(
+                        type="text",
+                        text="Error: Subtask not found or inaccessible",
+                    )
+                ],
+                isError=True,
+            )
+
+        node_data = content_response["node"]
+        if "content" not in node_data or not node_data["content"]:
+            return CallToolResult(
+                content=[
+                    TextContent(
+                        type="text",
+                        text="Error: Subtask content not found",
+                    )
+                ],
+                isError=True,
+            )
+
+        current_content = node_data["content"]
+        current_title = current_content.get("title", "")
+        current_body = current_content.get("body", "")
+
+        # Validate that this is actually a subtask
+        try:
+            metadata = _parse_subtask_metadata(current_body)
+            if not metadata or metadata.get("type") != "Subtask":
+                return CallToolResult(
+                    content=[
+                        TextContent(
+                            type="text",
+                            text="Error: Invalid subtask format - this item is not a valid subtask",
+                        )
+                    ],
+                    isError=True,
+                )
+        except Exception:
+            return CallToolResult(
+                content=[
+                    TextContent(
+                        type="text",
+                        text="Error: Invalid subtask format - could not parse metadata",
+                    )
+                ],
+                isError=True,
+            )
+
+        # Prepare updated values
+        updated_title = new_title if new_title is not None else current_title
+
+        # Update body with new metadata and description
+        try:
+            updated_body = _update_subtask_metadata(
+                current_body,
+                new_description=new_description,
+                new_status=new_status,
+                new_order=new_order,
+            )
+        except Exception as e:
+            return CallToolResult(
+                content=[
+                    TextContent(
+                        type="text",
+                        text=f"Error: Failed to update metadata: {str(e)}",
+                    )
+                ],
+                isError=True,
+            )
+
+        # Build and execute update mutation
+        mutation = _build_update_subtask_mutation(
+            subtask_item_id=subtask_item_id,
+            title=updated_title if new_title is not None else None,
+            body=updated_body,
+        )
+
+        try:
+            update_response = await client.mutate(mutation)
+        except Exception as e:
+            logger.error(f"Error updating subtask: {e}")
+            return CallToolResult(
+                content=[
+                    TextContent(
+                        type="text",
+                        text=f"Error: Failed to update subtask: {str(e)}",
+                    )
+                ],
+                isError=True,
+            )
+
+        # Validate update response
+        if not update_response:
+            return CallToolResult(
+                content=[
+                    TextContent(
+                        type="text",
+                        text="Error: No response data received from update operation",
+                    )
+                ],
+                isError=True,
+            )
+
+        # Extract updated subtask information
+        update_data = update_response.get("updateIssue", {})
+        issue_data = update_data.get("issue", {})
+
+        updated_metadata = _parse_subtask_metadata(updated_body)
+
+        # Build success response
+        result_lines = [
+            "🎉 **Subtask updated successfully!**",
+            "",
+            f"**Subtask ID:** {subtask_item_id}",
+            f"**Title:** {updated_title}",
+            f"**Status:** {updated_metadata.get('status', 'Unknown')}",
+            f"**Order:** {updated_metadata.get('order', 'Unknown')}",
+            f"**Parent Task:** {updated_metadata.get('parent_task_id', 'Unknown')}",
+        ]
+
+        if new_description is not None:
+            # Show truncated description
+            desc_preview = (
+                new_description[:100] + "..."
+                if len(new_description) > 100
+                else new_description
+            )
+            result_lines.extend(
+                [
+                    "",
+                    f"**Description:** {desc_preview}",
+                ]
+            )
+
+        result_lines.extend(
+            [
+                "",
+                f"**Updated:** {issue_data.get('updatedAt', 'Unknown')}",
+            ]
+        )
+
+        result_text = "\n".join(result_lines)
+
+        return CallToolResult(
+            content=[TextContent(type="text", text=result_text)],
+            isError=False,
+        )
+
+    except Exception as e:
+        logger.error(f"Unexpected error in update_subtask_handler: {e}")
+        return CallToolResult(
+            content=[
+                TextContent(
+                    type="text",
+                    text=f"Error: Unexpected error updating subtask: {str(e)}",
+                )
+            ],
+            isError=True,
+        )
+
+
+def _build_delete_subtask_mutation(subtask_item_id: str) -> str:
+    """
+    Build GraphQL mutation for deleting a subtask.
+
+    Args:
+        subtask_item_id: ID of the subtask item to delete
+
+    Returns:
+        GraphQL mutation string
+    """
+    query_builder = ProjectQueryBuilder()
+    escaped_id = query_builder._escape_string(subtask_item_id)
+
+    mutation = f"""
+mutation {{
+  deleteProjectV2Item(input: {{
+    projectId: ""
+    itemId: {escaped_id}
+  }}) {{
+    deletedItemId
+  }}
+}}
+""".strip()
+
+    return mutation
+
+
+async def delete_subtask_handler(arguments: Dict[str, Any]) -> CallToolResult:
+    """
+    Handle delete_subtask tool calls.
+
+    Deletes a Subtask from a GitHub project with safety confirmation requirements.
+    This action is permanent and cannot be undone.
+
+    Args:
+        arguments: Tool call arguments containing:
+            - project_id (required): GitHub project ID
+            - subtask_item_id (required): ID of the subtask item to delete
+            - confirm (required): Boolean confirmation (must be True)
+
+    Returns:
+        CallToolResult with operation results
+    """
+    try:
+        # Validate required parameters
+        project_id = arguments.get("project_id", "").strip()
+        subtask_item_id = arguments.get("subtask_item_id", "").strip()
+        confirm = arguments.get("confirm")
+
+        if not project_id:
+            return CallToolResult(
+                content=[
+                    TextContent(
+                        type="text",
+                        text="Error: project_id is required to delete subtask",
+                    )
+                ],
+                isError=True,
+            )
+
+        if not subtask_item_id:
+            return CallToolResult(
+                content=[
+                    TextContent(
+                        type="text",
+                        text="Error: subtask_item_id is required to delete subtask",
+                    )
+                ],
+                isError=True,
+            )
+
+        # Validate confirmation requirement
+        if confirm is None or not confirm:
+            return CallToolResult(
+                content=[
+                    TextContent(
+                        type="text",
+                        text="Error: Confirmation is required to delete subtask. Set 'confirm' to true to proceed with deletion.",
+                    )
+                ],
+                isError=True,
+            )
+
+        # Check if GitHub client is initialized
+        client = get_github_client()
+        if not client:
+            return CallToolResult(
+                content=[
+                    TextContent(
+                        type="text",
+                        text="Error: GitHub client not initialized. Please call initialize_github_client first.",
+                    )
+                ],
+                isError=True,
+            )
+
+        # Build and execute delete mutation
+        mutation = _build_delete_subtask_mutation(subtask_item_id)
+
+        try:
+            response = await client.mutate(mutation)
+        except Exception as e:
+            logger.error(f"Error deleting subtask: {e}")
+            return CallToolResult(
+                content=[
+                    TextContent(
+                        type="text",
+                        text=f"Error: Failed to delete subtask: {str(e)}",
+                    )
+                ],
+                isError=True,
+            )
+
+        # Validate response
+        if not response:
+            return CallToolResult(
+                content=[
+                    TextContent(
+                        type="text",
+                        text="Error: No response data received from delete operation",
+                    )
+                ],
+                isError=True,
+            )
+
+        # Parse response
+        delete_data = response.get("deleteProjectV2Item", {})
+        if not delete_data:
+            return CallToolResult(
+                content=[
+                    TextContent(
+                        type="text",
+                        text="Error: Invalid response format - deleteProjectV2Item not found",
+                    )
+                ],
+                isError=True,
+            )
+
+        # Get deleted item ID if available (for confirmation)
+        deleted_item_id = delete_data.get("deletedItemId")
+
+        # Build success response
+        result_lines = [
+            "🗑️ **Subtask deleted successfully!**",
+            "",
+            f"**Project ID:** {project_id}",
+            f"**Subtask Item ID:** {subtask_item_id}",
+        ]
+
+        if deleted_item_id:
+            result_lines.append(f"**Deleted Item ID:** {deleted_item_id}")
+
+        result_lines.extend(
+            [
+                "",
+                "⚠️ **This action is permanent and cannot be undone.**",
+            ]
+        )
+
+        result_text = "\n".join(result_lines)
+
+        return CallToolResult(
+            content=[TextContent(type="text", text=result_text)],
+            isError=False,
+        )
+
+    except Exception as e:
+        logger.error(f"Unexpected error in delete_subtask_handler: {e}")
+        return CallToolResult(
+            content=[
+                TextContent(
+                    type="text",
+                    text=f"Error: Unexpected error deleting subtask: {str(e)}",
+                )
+            ],
+            isError=True,
+        )
+
+
 # Tool definitions
 ADD_SUBTASK_TOOL = Tool(
     name="add_subtask",
@@ -660,10 +1298,73 @@ LIST_SUBTASKS_TOOL = Tool(
     },
 )
 
+UPDATE_SUBTASK_TOOL = Tool(
+    name="update_subtask",
+    description="Update a subtask's content and status. Supports updating title, description, status, and order with comprehensive validation and metadata preservation.",
+    inputSchema={
+        "type": "object",
+        "properties": {
+            "subtask_item_id": {
+                "type": "string",
+                "description": "GitHub Projects v2 item ID of the subtask to update (e.g., 'PVTI_kwDOA...')",
+            },
+            "title": {
+                "type": "string",
+                "description": "New subtask title",
+            },
+            "description": {
+                "type": "string",
+                "description": "New subtask description",
+            },
+            "status": {
+                "type": "string",
+                "description": "New subtask status",
+                "enum": ["Incomplete", "Complete"],
+            },
+            "order": {
+                "type": "integer",
+                "description": "New order position within the parent task",
+                "minimum": 1,
+            },
+        },
+        "required": ["subtask_item_id"],
+    },
+)
+
+DELETE_SUBTASK_TOOL = Tool(
+    name="delete_subtask",
+    description="Delete a subtask from a GitHub project. This action is permanent and cannot be undone.",
+    inputSchema={
+        "type": "object",
+        "properties": {
+            "project_id": {
+                "type": "string",
+                "description": "GitHub Projects v2 project ID (e.g., 'PVT_kwDOA...')",
+            },
+            "subtask_item_id": {
+                "type": "string",
+                "description": "GitHub Projects v2 item ID of the subtask to delete (e.g., 'PVTI_kwDOA...')",
+            },
+            "confirm": {
+                "type": "boolean",
+                "description": "Confirmation that you want to delete the subtask (must be true)",
+            },
+        },
+        "required": ["project_id", "subtask_item_id", "confirm"],
+    },
+)
+
 # Tool exports
-SUBTASK_TOOLS = [ADD_SUBTASK_TOOL, LIST_SUBTASKS_TOOL]
+SUBTASK_TOOLS = [
+    ADD_SUBTASK_TOOL,
+    LIST_SUBTASKS_TOOL,
+    UPDATE_SUBTASK_TOOL,
+    DELETE_SUBTASK_TOOL,
+]
 
 SUBTASK_TOOL_HANDLERS = {
     "add_subtask": add_subtask_handler,
     "list_subtasks": list_subtasks_handler,
+    "update_subtask": update_subtask_handler,
+    "delete_subtask": delete_subtask_handler,
 }
