@@ -179,7 +179,7 @@ class TestGitHubAPIIntegration:
                     "projectV2": {
                         "id": "PVT_kwDOEXISTING",
                         "title": "Updated Project Title",
-                        "description": "Updated project description",
+                        "shortDescription": "Updated project description",
                         "updatedAt": "2024-01-06T00:00:00Z",
                     }
                 }
@@ -194,7 +194,7 @@ class TestGitHubAPIIntegration:
         mutation = query_builder.update_project(
             "PVT_kwDOEXISTING",
             title="Updated Project Title",
-            description="Updated project description",
+            short_description="Updated project description",
         )
 
         with patch.object(github_client.session, "post", return_value=mock_response):
@@ -202,7 +202,7 @@ class TestGitHubAPIIntegration:
 
             project = result["updateProjectV2"]["projectV2"]
             assert project["title"] == "Updated Project Title"
-            assert project["description"] == "Updated project description"
+            assert project["shortDescription"] == "Updated project description"
 
     @pytest.mark.asyncio
     async def test_get_project_items_integration(self, github_client, query_builder):
@@ -490,7 +490,7 @@ class TestGitHubAPIIntegration:
             update_mutation = query_builder.update_project(
                 project_id,
                 title="Updated E2E Project",
-                description="Updated description",
+                short_description="Updated description",
             )
             update_result = await github_client.mutate(update_mutation)
             assert (
