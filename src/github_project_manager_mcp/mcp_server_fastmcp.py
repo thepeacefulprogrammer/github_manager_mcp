@@ -100,6 +100,7 @@ except ImportError as e:
 try:
     from github_project_manager_mcp.handlers.prd_handlers import (
         add_prd_to_project_handler,
+        complete_prd_handler,
         delete_prd_from_project_handler,
     )
     from github_project_manager_mcp.handlers.prd_handlers import (
@@ -718,6 +719,39 @@ class GitHubProjectManagerMCPFastServer:
                 logger.error(f"Error in update_prd_status: {e}")
                 logger.error(f"Traceback: {traceback.format_exc()}")
                 return f'{{"success": false, "error": "Failed to update PRD status: {str(e)}"}}'
+
+        # Complete PRD tool
+        @self.mcp.tool()
+        async def complete_prd(prd_item_id: str) -> str:
+            """Mark a PRD as complete by setting its status to 'Done'. This is a convenience method that automatically sets the PRD status to 'Done' without requiring other parameters."""
+            logger.info(f"Complete PRD called: prd_item_id={prd_item_id}")
+
+            try:
+                await self._ensure_async_initialized()
+
+                if not self.github_client:
+                    return '{"success": false, "error": "GitHub client not initialized - check token configuration"}'
+
+                result = await complete_prd_handler(
+                    {
+                        "prd_item_id": prd_item_id,
+                    }
+                )
+
+                logger.info(f"Complete PRD result: {result}")
+
+                # Extract text content from CallToolResult
+                if hasattr(result, "content") and result.content:
+                    return result.content[0].text
+                else:
+                    return str(result)
+
+            except Exception as e:
+                logger.error(f"Error in complete_prd: {e}")
+                logger.error(f"Traceback: {traceback.format_exc()}")
+                return (
+                    f'{{"success": false, "error": "Failed to complete PRD: {str(e)}"}}'
+                )
 
         # Update task tool
         @self.mcp.tool()

@@ -1360,6 +1360,293 @@ The field values have been updated in the GitHub project."""
         )
 
 
+async def complete_prd_handler(arguments: Dict[str, Any]) -> CallToolResult:
+    """
+    Handle complete_prd tool calls.
+
+    Marks a PRD as complete by setting its status to "Done". This is a
+    convenience method that provides a simple one-click completion for PRDs.
+    The operation is idempotent - calling it on an already complete PRD
+    will return a success message without making changes.
+
+    Args:
+        arguments: Tool call arguments containing:
+            - prd_item_id (required): GitHub project item ID of the PRD
+
+    Returns:
+        CallToolResult with operation results
+    """
+    try:
+        # Validate required parameters
+        prd_item_id = arguments.get("prd_item_id", "").strip()
+
+        if not prd_item_id:
+            return CallToolResult(
+                content=[
+                    TextContent(
+                        type="text",
+                        text="Error: prd_item_id is required to complete PRD",
+                    )
+                ],
+                isError=True,
+            )
+
+        client = get_github_client()
+        if not client:
+            return CallToolResult(
+                content=[
+                    TextContent(
+                        type="text",
+                        text="Error: GitHub client not initialized",
+                    )
+                ],
+                isError=True,
+            )
+
+        # Use existing logic from update_prd_status_handler to get project item fields
+        query_builder = ProjectQueryBuilder()
+        escaped_item_id = query_builder._escape_string(prd_item_id)
+
+        # Query to get project item fields and current status
+        fields_query = f"""
+query {{
+  node(id: {escaped_item_id}) {{
+    ... on ProjectV2Item {{
+      id
+      project {{
+        id
+        fields(first: 20) {{
+          nodes {{
+            ... on ProjectV2SingleSelectField {{
+              id
+              name
+              dataType
+              options {{
+                id
+                name
+              }}
+            }}
+          }}
+        }}
+      }}
+      fieldValues(first: 20) {{
+        nodes {{
+          ... on ProjectV2ItemFieldSingleSelectValue {{
+            field {{
+              ... on ProjectV2SingleSelectField {{
+                name
+              }}
+            }}
+            optionId
+            singleSelectOption {{
+              name
+            }}
+          }}
+        }}
+      }}
+    }}
+  }}
+}}
+""".strip()
+
+        logger.info(f"Fetching PRD status for completion: {prd_item_id}")
+        fields_response = await client.query(fields_query)
+
+        if "errors" in fields_response:
+            error_messages = [error["message"] for error in fields_response["errors"]]
+            return CallToolResult(
+                content=[
+                    TextContent(
+                        type="text",
+                        text=f"Failed to fetch PRD status: {'; '.join(error_messages)}",
+                    )
+                ],
+                isError=True,
+            )
+
+        if not fields_response.get("node"):
+            return CallToolResult(
+                content=[
+                    TextContent(
+                        type="text",
+                        text="Error: PRD not found",
+                    )
+                ],
+                isError=True,
+            )
+
+        project_item = fields_response["node"]
+        project = project_item.get("project", {})
+        project_fields = project.get("fields", {}).get("nodes", [])
+        current_field_values = project_item.get("fieldValues", {}).get("nodes", [])
+
+        # Find Status field
+        status_field = None
+        for field in project_fields:
+            if (
+                field.get("name") == "Status"
+                and field.get("dataType") == "SINGLE_SELECT"
+            ):
+                status_field = field
+                break
+
+        if not status_field:
+            return CallToolResult(
+                content=[
+                    TextContent(
+                        type="text",
+                        text="Error: Status field not found in project",
+                    )
+                ],
+                isError=True,
+            )
+
+        # Get current status
+        current_status = None
+        for field_value in current_field_values:
+            if field_value.get("field", {}).get("name") == "Status":
+                current_status = field_value.get("singleSelectOption", {}).get("name")
+                break
+
+        # Check if already complete
+        if current_status == "Done":
+            return CallToolResult(
+                content=[
+                    TextContent(
+                        type="text",
+                        text=f"✅ PRD is already complete!\n\n**Status:** Done",
+                    )
+                ],
+                isError=False,
+            )
+
+        # Find the "Done" option ID
+        done_option_id = None
+        for option in status_field.get("options", []):
+            if option.get("name") == "Done":
+                done_option_id = option.get("id")
+                break
+
+        if not done_option_id:
+            return CallToolResult(
+                content=[
+                    TextContent(
+                        type="text",
+                        text="Error: 'Done' status option not found in project",
+                    )
+                ],
+                isError=True,
+            )
+
+        # Build update mutation to set status to "Done"
+        status_mutation = f"""
+mutation {{
+  updateProjectV2ItemFieldValue(input: {{
+    projectId: {query_builder._escape_string(project["id"])}
+    itemId: {escaped_item_id}
+    fieldId: {query_builder._escape_string(status_field["id"])}
+    value: {{
+      singleSelectOptionId: {query_builder._escape_string(done_option_id)}
+    }}
+  }}) {{
+    projectV2Item {{
+      id
+      fieldValues(first: 20) {{
+        nodes {{
+          ... on ProjectV2ItemFieldSingleSelectValue {{
+            field {{
+              ... on ProjectV2SingleSelectField {{
+                name
+              }}
+            }}
+            optionId
+            singleSelectOption {{
+              name
+            }}
+          }}
+        }}
+      }}
+    }}
+  }}
+}}
+""".strip()
+
+        logger.info(f"Completing PRD (setting status to 'Done'): {prd_item_id}")
+
+        try:
+            status_response = await client.mutate(status_mutation)
+        except Exception as e:
+            logger.error(f"GraphQL mutation error in complete_prd_handler: {e}")
+            return CallToolResult(
+                content=[
+                    TextContent(
+                        type="text",
+                        text=f"Failed to complete PRD: {str(e)}",
+                    )
+                ],
+                isError=True,
+            )
+
+        if not status_response:
+            return CallToolResult(
+                content=[
+                    TextContent(
+                        type="text",
+                        text="No response data received from completion operation",
+                    )
+                ],
+                isError=True,
+            )
+
+        if "errors" in status_response:
+            error_messages = [error["message"] for error in status_response["errors"]]
+            return CallToolResult(
+                content=[
+                    TextContent(
+                        type="text",
+                        text=f"Failed to complete PRD: {'; '.join(error_messages)}",
+                    )
+                ],
+                isError=True,
+            )
+
+        # Verify successful completion
+        update_data = status_response.get("updateProjectV2ItemFieldValue")
+        if not update_data:
+            return CallToolResult(
+                content=[
+                    TextContent(
+                        type="text",
+                        text="Invalid response format from completion operation",
+                    )
+                ],
+                isError=True,
+            )
+
+        # Success response
+        return CallToolResult(
+            content=[
+                TextContent(
+                    type="text",
+                    text="✅ PRD completed successfully!\n\n**Status:** Done",
+                )
+            ],
+            isError=False,
+        )
+
+    except Exception as e:
+        logger.error(f"Unexpected error in complete_prd_handler: {e}")
+        return CallToolResult(
+            content=[
+                TextContent(
+                    type="text",
+                    text=f"Failed to fetch PRD status: {str(e)}",
+                )
+            ],
+            isError=True,
+        )
+
+
 # Define MCP tools for PRD management
 PRD_TOOLS = [
     Tool(
@@ -1527,6 +1814,20 @@ PRD_TOOLS = [
             "additionalProperties": False,
         },
     ),
+    Tool(
+        name="complete_prd",
+        description="Mark a PRD as complete. This is a convenience method that automatically sets the PRD status to 'Done' without requiring other parameters.",
+        inputSchema={
+            "type": "object",
+            "properties": {
+                "prd_item_id": {
+                    "type": "string",
+                    "description": "GitHub project item ID of the PRD to complete",
+                },
+            },
+            "required": ["prd_item_id"],
+        },
+    ),
 ]
 
 # Map tool names to handler functions
@@ -1536,4 +1837,5 @@ PRD_TOOL_HANDLERS = {
     "delete_prd_from_project": delete_prd_from_project_handler,
     "update_prd": update_prd_handler,
     "update_prd_status": update_prd_status_handler,
+    "complete_prd": complete_prd_handler,
 }

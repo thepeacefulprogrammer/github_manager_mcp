@@ -335,9 +335,10 @@ class TestPRDHandlerRegistration:
         assert "delete_prd_from_project" in tool_names
         assert "update_prd" in tool_names
         assert "update_prd_status" in tool_names
+        assert "complete_prd" in tool_names
         assert (
-            len(PRD_TOOLS) == 5
-        )  # add_prd, list_prds, delete_prd, update_prd, update_prd_status
+            len(PRD_TOOLS) == 6
+        )  # add_prd, list_prds, delete_prd, update_prd, update_prd_status, complete_prd
 
         # Verify all tools have required attributes
         for tool in PRD_TOOLS:
@@ -1728,3 +1729,485 @@ class TestUpdatePrdStatusHandler:
 
             assert result.isError is True
             assert "Invalid project item ID" in result.content[0].text
+
+
+class TestCompletePrdHandler:
+    """Test cases for the complete_prd_handler function."""
+
+    @pytest.mark.asyncio
+    async def test_complete_prd_success(self):
+        """Test successful PRD completion."""
+        mock_client = AsyncMock()
+
+        # Mock successful field value response showing current status
+        mock_fields_response = {
+            "node": {
+                "id": "PVTI_prd123",
+                "project": {
+                    "id": "PVT_project123",
+                    "fields": {
+                        "nodes": [
+                            {
+                                "id": "FIELD_STATUS_ID",
+                                "name": "Status",
+                                "dataType": "SINGLE_SELECT",
+                                "options": [
+                                    {"id": "OPT_BACKLOG", "name": "Backlog"},
+                                    {"id": "OPT_IN_PROGRESS", "name": "In Progress"},
+                                    {"id": "OPT_DONE", "name": "Done"},
+                                ],
+                            },
+                        ]
+                    },
+                },
+                "fieldValues": {
+                    "nodes": [
+                        {
+                            "field": {"name": "Status"},
+                            "optionId": "OPT_IN_PROGRESS",
+                            "singleSelectOption": {"name": "In Progress"},
+                        }
+                    ]
+                },
+            }
+        }
+
+        # Mock successful update response
+        mock_update_response = {
+            "updateProjectV2ItemFieldValue": {
+                "projectV2Item": {
+                    "id": "PVTI_prd123",
+                    "fieldValues": {
+                        "nodes": [
+                            {
+                                "field": {"name": "Status"},
+                                "optionId": "OPT_DONE",
+                                "singleSelectOption": {"name": "Done"},
+                            }
+                        ]
+                    },
+                }
+            }
+        }
+
+        mock_client.query.return_value = mock_fields_response
+        mock_client.mutate.return_value = mock_update_response
+
+        with patch(
+            "github_project_manager_mcp.handlers.prd_handlers.get_github_client",
+            return_value=mock_client,
+        ):
+            from github_project_manager_mcp.handlers.prd_handlers import (
+                complete_prd_handler,
+            )
+
+            result = await complete_prd_handler(
+                {
+                    "prd_item_id": "PVTI_prd123",
+                }
+            )
+
+        assert not result.isError
+        assert "PRD completed successfully!" in result.content[0].text
+        assert "**Status:** Done" in result.content[0].text
+
+    @pytest.mark.asyncio
+    async def test_complete_prd_already_complete(self):
+        """Test completing a PRD that is already complete."""
+        mock_client = AsyncMock()
+
+        # Mock response with already complete PRD
+        mock_fields_response = {
+            "node": {
+                "id": "PVTI_prd123",
+                "project": {
+                    "id": "PVT_project123",
+                    "fields": {
+                        "nodes": [
+                            {
+                                "id": "FIELD_STATUS_ID",
+                                "name": "Status",
+                                "dataType": "SINGLE_SELECT",
+                                "options": [
+                                    {"id": "OPT_BACKLOG", "name": "Backlog"},
+                                    {"id": "OPT_IN_PROGRESS", "name": "In Progress"},
+                                    {"id": "OPT_DONE", "name": "Done"},
+                                ],
+                            },
+                        ]
+                    },
+                },
+                "fieldValues": {
+                    "nodes": [
+                        {
+                            "field": {"name": "Status"},
+                            "optionId": "OPT_DONE",
+                            "singleSelectOption": {"name": "Done"},
+                        }
+                    ]
+                },
+            }
+        }
+
+        mock_client.query.return_value = mock_fields_response
+
+        with patch(
+            "github_project_manager_mcp.handlers.prd_handlers.get_github_client",
+            return_value=mock_client,
+        ):
+            from github_project_manager_mcp.handlers.prd_handlers import (
+                complete_prd_handler,
+            )
+
+            result = await complete_prd_handler(
+                {
+                    "prd_item_id": "PVTI_prd123",
+                }
+            )
+
+        assert not result.isError
+        assert "PRD is already complete!" in result.content[0].text
+        assert "**Status:** Done" in result.content[0].text
+
+    @pytest.mark.asyncio
+    async def test_complete_prd_missing_prd_item_id(self):
+        """Test complete_prd with missing prd_item_id."""
+        from github_project_manager_mcp.handlers.prd_handlers import (
+            complete_prd_handler,
+        )
+
+        result = await complete_prd_handler({})
+
+        assert result.isError
+        assert "prd_item_id is required" in result.content[0].text
+
+    @pytest.mark.asyncio
+    async def test_complete_prd_empty_prd_item_id(self):
+        """Test complete_prd with empty prd_item_id."""
+        from github_project_manager_mcp.handlers.prd_handlers import (
+            complete_prd_handler,
+        )
+
+        result = await complete_prd_handler({"prd_item_id": ""})
+
+        assert result.isError
+        assert "prd_item_id is required" in result.content[0].text
+
+    @pytest.mark.asyncio
+    async def test_complete_prd_github_client_not_initialized(self):
+        """Test complete_prd when GitHub client is not initialized."""
+        with patch(
+            "github_project_manager_mcp.handlers.prd_handlers.get_github_client",
+            return_value=None,
+        ):
+            from github_project_manager_mcp.handlers.prd_handlers import (
+                complete_prd_handler,
+            )
+
+            result = await complete_prd_handler(
+                {
+                    "prd_item_id": "PVTI_prd123",
+                }
+            )
+
+        assert result.isError
+        assert "GitHub client not initialized" in result.content[0].text
+
+    @pytest.mark.asyncio
+    async def test_complete_prd_not_found(self):
+        """Test complete_prd when PRD is not found."""
+        mock_client = AsyncMock()
+        mock_client.query.return_value = {"node": None}
+
+        with patch(
+            "github_project_manager_mcp.handlers.prd_handlers.get_github_client",
+            return_value=mock_client,
+        ):
+            from github_project_manager_mcp.handlers.prd_handlers import (
+                complete_prd_handler,
+            )
+
+            result = await complete_prd_handler(
+                {
+                    "prd_item_id": "PVTI_invalid123",
+                }
+            )
+
+        assert result.isError
+        assert "PRD not found" in result.content[0].text
+
+    @pytest.mark.asyncio
+    async def test_complete_prd_no_status_field(self):
+        """Test error handling when PRD has no status field."""
+        mock_client = AsyncMock()
+        mock_response = {
+            "node": {
+                "id": "PVTI_prd123",
+                "project": {
+                    "id": "PVT_project123",
+                    "fields": {
+                        "nodes": [
+                            {
+                                "id": "FIELD_PRIORITY_ID",
+                                "name": "Priority",
+                                "dataType": "SINGLE_SELECT",
+                                "options": [
+                                    {"id": "OPT_LOW", "name": "Low"},
+                                    {"id": "OPT_HIGH", "name": "High"},
+                                ],
+                            },
+                        ]
+                    },
+                },
+                "fieldValues": {"nodes": []},
+            }
+        }
+        mock_client.query.return_value = mock_response
+
+        with patch(
+            "github_project_manager_mcp.handlers.prd_handlers.get_github_client",
+            return_value=mock_client,
+        ):
+            from github_project_manager_mcp.handlers.prd_handlers import (
+                complete_prd_handler,
+            )
+
+            result = await complete_prd_handler(
+                {
+                    "prd_item_id": "PVTI_prd123",
+                }
+            )
+
+        assert result.isError
+        assert "Status field not found" in result.content[0].text
+
+    @pytest.mark.asyncio
+    async def test_complete_prd_graphql_query_error(self):
+        """Test error handling when GraphQL query fails."""
+        mock_client = AsyncMock()
+        mock_client.query.side_effect = Exception("GraphQL query failed")
+
+        with patch(
+            "github_project_manager_mcp.handlers.prd_handlers.get_github_client",
+            return_value=mock_client,
+        ):
+            from github_project_manager_mcp.handlers.prd_handlers import (
+                complete_prd_handler,
+            )
+
+            result = await complete_prd_handler(
+                {
+                    "prd_item_id": "PVTI_prd123",
+                }
+            )
+
+        assert result.isError
+        assert "Failed to fetch PRD status" in result.content[0].text
+        assert "GraphQL query failed" in result.content[0].text
+
+    @pytest.mark.asyncio
+    async def test_complete_prd_update_mutation_error(self):
+        """Test error handling when update mutation fails."""
+        mock_client = AsyncMock()
+
+        # Mock successful query response
+        mock_fields_response = {
+            "node": {
+                "id": "PVTI_prd123",
+                "project": {
+                    "id": "PVT_project123",
+                    "fields": {
+                        "nodes": [
+                            {
+                                "id": "FIELD_STATUS_ID",
+                                "name": "Status",
+                                "dataType": "SINGLE_SELECT",
+                                "options": [
+                                    {"id": "OPT_BACKLOG", "name": "Backlog"},
+                                    {"id": "OPT_IN_PROGRESS", "name": "In Progress"},
+                                    {"id": "OPT_DONE", "name": "Done"},
+                                ],
+                            },
+                        ]
+                    },
+                },
+                "fieldValues": {
+                    "nodes": [
+                        {
+                            "field": {"name": "Status"},
+                            "optionId": "OPT_IN_PROGRESS",
+                            "singleSelectOption": {"name": "In Progress"},
+                        }
+                    ]
+                },
+            }
+        }
+
+        mock_client.query.return_value = mock_fields_response
+        mock_client.mutate.side_effect = Exception(
+            "GraphQL mutation error: Permission denied"
+        )
+
+        with patch(
+            "github_project_manager_mcp.handlers.prd_handlers.get_github_client",
+            return_value=mock_client,
+        ):
+            from github_project_manager_mcp.handlers.prd_handlers import (
+                complete_prd_handler,
+            )
+
+            result = await complete_prd_handler(
+                {
+                    "prd_item_id": "PVTI_prd123",
+                }
+            )
+
+        assert result.isError
+        assert "Failed to complete PRD" in result.content[0].text
+        assert "GraphQL mutation error: Permission denied" in result.content[0].text
+
+    @pytest.mark.asyncio
+    async def test_complete_prd_no_update_response(self):
+        """Test error handling when update mutation returns no response."""
+        mock_client = AsyncMock()
+
+        # Mock successful query response
+        mock_fields_response = {
+            "node": {
+                "id": "PVTI_prd123",
+                "project": {
+                    "id": "PVT_project123",
+                    "fields": {
+                        "nodes": [
+                            {
+                                "id": "FIELD_STATUS_ID",
+                                "name": "Status",
+                                "dataType": "SINGLE_SELECT",
+                                "options": [
+                                    {"id": "OPT_BACKLOG", "name": "Backlog"},
+                                    {"id": "OPT_IN_PROGRESS", "name": "In Progress"},
+                                    {"id": "OPT_DONE", "name": "Done"},
+                                ],
+                            },
+                        ]
+                    },
+                },
+                "fieldValues": {
+                    "nodes": [
+                        {
+                            "field": {"name": "Status"},
+                            "optionId": "OPT_IN_PROGRESS",
+                            "singleSelectOption": {"name": "In Progress"},
+                        }
+                    ]
+                },
+            }
+        }
+
+        mock_client.query.return_value = mock_fields_response
+        mock_client.mutate.return_value = None
+
+        with patch(
+            "github_project_manager_mcp.handlers.prd_handlers.get_github_client",
+            return_value=mock_client,
+        ):
+            from github_project_manager_mcp.handlers.prd_handlers import (
+                complete_prd_handler,
+            )
+
+            result = await complete_prd_handler(
+                {
+                    "prd_item_id": "PVTI_prd123",
+                }
+            )
+
+        assert result.isError
+        assert (
+            "No response data received from completion operation"
+            in result.content[0].text
+        )
+
+    @pytest.mark.asyncio
+    async def test_complete_prd_invalid_update_response_format(self):
+        """Test error handling when update response format is unexpected."""
+        mock_client = AsyncMock()
+
+        # Mock successful query response
+        mock_fields_response = {
+            "node": {
+                "id": "PVTI_prd123",
+                "project": {
+                    "id": "PVT_project123",
+                    "fields": {
+                        "nodes": [
+                            {
+                                "id": "FIELD_STATUS_ID",
+                                "name": "Status",
+                                "dataType": "SINGLE_SELECT",
+                                "options": [
+                                    {"id": "OPT_BACKLOG", "name": "Backlog"},
+                                    {"id": "OPT_IN_PROGRESS", "name": "In Progress"},
+                                    {"id": "OPT_DONE", "name": "Done"},
+                                ],
+                            },
+                        ]
+                    },
+                },
+                "fieldValues": {
+                    "nodes": [
+                        {
+                            "field": {"name": "Status"},
+                            "optionId": "OPT_IN_PROGRESS",
+                            "singleSelectOption": {"name": "In Progress"},
+                        }
+                    ]
+                },
+            }
+        }
+
+        mock_client.query.return_value = mock_fields_response
+        mock_client.mutate.return_value = {"unexpected": "format"}
+
+        with patch(
+            "github_project_manager_mcp.handlers.prd_handlers.get_github_client",
+            return_value=mock_client,
+        ):
+            from github_project_manager_mcp.handlers.prd_handlers import (
+                complete_prd_handler,
+            )
+
+            result = await complete_prd_handler(
+                {
+                    "prd_item_id": "PVTI_prd123",
+                }
+            )
+
+        assert result.isError
+        assert (
+            "Invalid response format from completion operation"
+            in result.content[0].text
+        )
+
+    @pytest.mark.asyncio
+    async def test_complete_prd_api_exception(self):
+        """Test error handling for general API exceptions."""
+        mock_client = AsyncMock()
+        mock_client.query.side_effect = Exception("Network error")
+
+        with patch(
+            "github_project_manager_mcp.handlers.prd_handlers.get_github_client",
+            return_value=mock_client,
+        ):
+            from github_project_manager_mcp.handlers.prd_handlers import (
+                complete_prd_handler,
+            )
+
+            result = await complete_prd_handler(
+                {
+                    "prd_item_id": "PVTI_prd123",
+                }
+            )
+
+        assert result.isError
+        assert "Failed to fetch PRD status" in result.content[0].text
+        assert "Network error" in result.content[0].text
