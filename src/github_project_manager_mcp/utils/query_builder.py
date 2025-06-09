@@ -303,7 +303,9 @@ mutation {{
         self,
         project_id: str,
         title: Optional[str] = None,
-        description: Optional[str] = None,
+        short_description: Optional[str] = None,
+        readme: Optional[str] = None,
+        public: Optional[bool] = None,
     ) -> str:
         """
         Build a mutation to update a project.
@@ -311,7 +313,9 @@ mutation {{
         Args:
             project_id: GitHub project ID
             title: New project title
-            description: New project description
+            short_description: New project short description
+            readme: New project README content
+            public: Whether the project should be public
 
         Returns:
             GraphQL mutation string
@@ -326,8 +330,12 @@ mutation {{
 
         if title is not None:
             input_fields.append(f"title: {self._escape_string(title)}")
-        if description is not None:
-            input_fields.append(f"description: {self._escape_string(description)}")
+        if short_description is not None:
+            input_fields.append(f"shortDescription: {self._escape_string(short_description)}")
+        if readme is not None:
+            input_fields.append(f"readme: {self._escape_string(readme)}")
+        if public is not None:
+            input_fields.append(f"public: {str(public).lower()}")
 
         if len(input_fields) == 1:  # Only projectId provided
             raise ValueError("At least one field to update is required")
@@ -341,6 +349,8 @@ mutation {{
       id
       title
       shortDescription
+      readme
+      public
       updatedAt
     }}
   }}

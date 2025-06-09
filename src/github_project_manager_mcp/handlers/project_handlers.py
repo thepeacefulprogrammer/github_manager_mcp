@@ -680,10 +680,177 @@ This project is ready for use and can be managed through GitHub Projects v2."""
         )
 
 
+# Update project tool definition
+UPDATE_PROJECT_TOOL = Tool(
+    name="update_project",
+    description="Update a GitHub Projects v2 project metadata including name, description, visibility, and README",
+    inputSchema={
+        "type": "object",
+        "properties": {
+            "project_id": {
+                "type": "string",
+                "description": "ID of the project to update (e.g., 'PVT_kwDOBQfyVc0FoQ')",
+            },
+            "title": {
+                "type": "string",
+                "description": "New project title (optional)",
+            },
+            "short_description": {
+                "type": "string",
+                "description": "New project short description (optional)",
+            },
+            "readme": {
+                "type": "string",
+                "description": "New project README content in Markdown format (optional)",
+            },
+            "public": {
+                "type": "boolean",
+                "description": "Whether the project should be public (true) or private (false) (optional)",
+            },
+        },
+        "required": ["project_id"],
+    },
+)
+
+
+async def update_project_handler(arguments: Dict[str, Any]) -> CallToolResult:
+    """
+    Handle update_project MCP tool calls.
+
+    Args:
+        arguments: Tool arguments containing project_id and optional update fields
+
+    Returns:
+        CallToolResult with success/error information
+    """
+    try:
+        # Validate required arguments
+        project_id = arguments.get("project_id")
+        title = arguments.get("title")
+        short_description = arguments.get("short_description")
+        readme = arguments.get("readme")
+        public = arguments.get("public")
+
+        if not project_id:
+            return CallToolResult(
+                content=[
+                    TextContent(
+                        type="text", text="Error: 'project_id' parameter is required"
+                    )
+                ],
+                isError=True,
+            )
+
+        # Check if at least one field to update is provided
+        updates_provided = any([title, short_description, readme, public is not None])
+        if not updates_provided:
+            return CallToolResult(
+                content=[
+                    TextContent(
+                        type="text", 
+                        text="Error: At least one field to update must be provided (title, short_description, readme, or public)"
+                    )
+                ],
+                isError=True,
+            )
+
+        if not github_client:
+            return CallToolResult(
+                content=[
+                    TextContent(
+                        type="text", text="Error: GitHub client not initialized"
+                    )
+                ],
+                isError=True,
+            )
+
+        logger.info(f"Updating project with ID: {project_id}")
+
+        # Build the GraphQL mutation
+        mutation = query_builder.update_project(
+            project_id=project_id,
+            title=title,
+            short_description=short_description,
+            readme=readme,
+            public=public,
+        )
+
+        # Execute the mutation
+        try:
+            result = await github_client.mutate(mutation)
+            project_data = result.get("updateProjectV2", {}).get("projectV2", {})
+
+            if not project_data:
+                return CallToolResult(
+                    content=[
+                        TextContent(
+                            type="text",
+                            text="Error: Failed to update project - no data returned",
+                        )
+                    ],
+                    isError=True,
+                )
+
+            # Extract updated project information from the response
+            updated_title = project_data.get("title", "Unknown")
+            updated_short_description = project_data.get("shortDescription", "No description")
+            updated_readme = project_data.get("readme", "No README")
+            updated_public = project_data.get("public", False)
+            updated_at = project_data.get("updatedAt", "Unknown")
+
+            # Build response showing what was updated
+            updates = []
+            if title:
+                updates.append(f"- **Title:** {updated_title}")
+            if short_description:
+                updates.append(f"- **Description:** {updated_short_description}")
+            if readme:
+                updates.append(f"- **README:** Updated ({len(updated_readme)} characters)")
+            if public is not None:
+                visibility = "Public" if updated_public else "Private"
+                updates.append(f"- **Visibility:** {visibility}")
+
+            updates_text = "\n".join(updates) if updates else "- No changes made"
+
+            # Success response
+            response_text = f"""✅ Successfully updated project!
+
+**Project:** {updated_title}
+**ID:** {project_id}
+
+**Updated Fields:**
+{updates_text}
+
+**Last Updated:** {updated_at}
+
+The project has been successfully updated with the new settings."""
+
+            return CallToolResult(
+                content=[TextContent(type="text", text=response_text)], isError=False
+            )
+
+        except Exception as e:
+            logger.error(f"GitHub API error updating project: {e}")
+            return CallToolResult(
+                content=[
+                    TextContent(type="text", text=f"Error updating project: {str(e)}")
+                ],
+                isError=True,
+            )
+
+    except Exception as e:
+        logger.error(f"Unexpected error in update_project_handler: {e}")
+        return CallToolResult(
+            content=[TextContent(type="text", text=f"Unexpected error: {str(e)}")],
+            isError=True,
+        )
+
+
 # All available project management tools
 PROJECT_TOOLS = [
     CREATE_PROJECT_TOOL,
     LIST_PROJECTS_TOOL,
+    UPDATE_PROJECT_TOOL,
     DELETE_PROJECT_TOOL,
     GET_PROJECT_DETAILS_TOOL,
 ]
@@ -692,6 +859,7 @@ PROJECT_TOOLS = [
 PROJECT_TOOL_HANDLERS = {
     "create_project": create_project_handler,
     "list_projects": list_projects_handler,
+    "update_project": update_project_handler,
     "delete_project": delete_project_handler,
     "get_project_details": get_project_details_handler,
 }

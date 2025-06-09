@@ -88,6 +88,7 @@ try:
         get_project_details_handler,
         initialize_github_client,
         list_projects_handler,
+        update_project_handler,
     )
 
     logger.info("Successfully imported project handlers")
@@ -100,6 +101,8 @@ try:
     from github_project_manager_mcp.handlers.prd_handlers import (
         add_prd_to_project_handler,
         delete_prd_from_project_handler,
+    )
+    from github_project_manager_mcp.handlers.prd_handlers import (
         initialize_github_client as initialize_prd_github_client,
     )
 
@@ -238,7 +241,9 @@ class GitHubProjectManagerMCPFastServer:
                 # Also initialize the global client for handlers
                 initialize_github_client(github_token)
                 initialize_prd_github_client(github_token)
-                logger.info("GitHub client initialized successfully for project and PRD handlers")
+                logger.info(
+                    "GitHub client initialized successfully for project and PRD handlers"
+                )
             else:
                 logger.warning("GitHub client not initialized - no token available")
 
@@ -403,6 +408,55 @@ class GitHubProjectManagerMCPFastServer:
                 logger.error(f"Traceback: {traceback.format_exc()}")
                 return f'{{"success": false, "error": "Failed to get project details: {str(e)}"}}'
 
+        # Update project tool
+        @self.mcp.tool()
+        async def update_project(
+            project_id: str,
+            title: str = None,
+            short_description: str = None,
+            readme: str = None,
+            public: bool = None,
+        ) -> str:
+            """Update a GitHub Projects v2 project metadata including name, description, visibility, and README."""
+            logger.info(
+                f"Update project called: project_id={project_id}, title={title}, short_description={short_description}, public={public}"
+            )
+
+            try:
+                await self._ensure_async_initialized()
+
+                if not self.github_client:
+                    return '{"success": false, "error": "GitHub client not initialized - check token configuration"}'
+
+                # Call the existing update project handler
+                args = {
+                    "project_id": project_id,
+                }
+
+                # Add optional fields if provided
+                if title:
+                    args["title"] = title
+                if short_description:
+                    args["short_description"] = short_description
+                if readme:
+                    args["readme"] = readme
+                if public is not None:
+                    args["public"] = public
+
+                result = await update_project_handler(args)
+                logger.info(f"Update project result: {result}")
+
+                # Extract text content from CallToolResult
+                if hasattr(result, "content") and result.content:
+                    return result.content[0].text
+                else:
+                    return str(result)
+
+            except Exception as e:
+                logger.error(f"Error in update_project: {e}")
+                logger.error(f"Traceback: {traceback.format_exc()}")
+                return f'{{"success": false, "error": "Failed to update project: {str(e)}"}}'
+
         # Add PRD to project tool
         @self.mcp.tool()
         async def add_prd_to_project(
@@ -410,10 +464,10 @@ class GitHubProjectManagerMCPFastServer:
             title: str,
             description: str = "",
             acceptance_criteria: str = "",
-            technical_requirements: str = "", 
+            technical_requirements: str = "",
             business_value: str = "",
             status: str = "Backlog",
-            priority: str = "Medium"
+            priority: str = "Medium",
         ) -> str:
             """Add a new Product Requirements Document (PRD) to a GitHub project as a draft issue with comprehensive metadata including acceptance criteria, technical requirements, and business value."""
             logger.info(
@@ -434,7 +488,7 @@ class GitHubProjectManagerMCPFastServer:
                     "status": status,
                     "priority": priority,
                 }
-                
+
                 # Add optional fields if provided
                 if acceptance_criteria:
                     args["acceptance_criteria"] = acceptance_criteria
@@ -459,7 +513,9 @@ class GitHubProjectManagerMCPFastServer:
 
         # Delete PRD from project tool
         @self.mcp.tool()
-        async def delete_prd_from_project(project_id: str, project_item_id: str, confirm: bool) -> str:
+        async def delete_prd_from_project(
+            project_id: str, project_item_id: str, confirm: bool
+        ) -> str:
             """Delete a Product Requirements Document (PRD) from a GitHub project. This action is permanent and cannot be undone."""
             logger.info(
                 f"Delete PRD from project called: project_id={project_id}, project_item_id={project_item_id}, confirm={confirm}"
@@ -493,7 +549,7 @@ class GitHubProjectManagerMCPFastServer:
                 return f'{{"success": false, "error": "Failed to delete PRD from project: {str(e)}"}}'
 
         logger.info(
-            f"Registered {len([test_connection, create_project, list_projects, delete_project, get_project_details, add_prd_to_project, delete_prd_from_project])} MCP tools"
+            f"Registered {len([test_connection, create_project, list_projects, update_project, delete_project, get_project_details, add_prd_to_project, delete_prd_from_project])} MCP tools"
         )
 
 

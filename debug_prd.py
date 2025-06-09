@@ -14,21 +14,22 @@ sys.path.insert(0, str(Path(__file__).parent / "src"))
 from github_project_manager_mcp.handlers.prd_handlers import add_prd_to_project_handler
 
 # Setup logging
-logging.basicConfig(level=logging.DEBUG, format='%(levelname)s: %(message)s')
+logging.basicConfig(level=logging.DEBUG, format="%(levelname)s: %(message)s")
+
 
 async def main():
     """Test PRD creation with debug output"""
-    
+
     # Test arguments
     args = {
-        'project_id': 'PVT_kwHOAGo2TM4A7DCP',
-        'title': 'Debug Test PRD', 
-        'description': 'Testing PRD creation with debug output'
+        "project_id": "PVT_kwHOAGo2TM4A7DCP",
+        "title": "Debug Test PRD",
+        "description": "Testing PRD creation with debug output",
     }
-    
+
     print("Testing PRD creation...")
     print(f"Args: {args}")
-    
+
     try:
         result = await add_prd_to_project_handler(args)
         print(f"\nResult type: {type(result)}")
@@ -40,7 +41,9 @@ async def main():
     except Exception as e:
         print(f"Exception occurred: {e}")
         import traceback
+
         traceback.print_exc()
 
+
 if __name__ == "__main__":
-    asyncio.run(main()) 
+    asyncio.run(main())

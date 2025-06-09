@@ -5,15 +5,12 @@ This module provides comprehensive test coverage for PRD data models
 used in GitHub Projects v2 integration.
 """
 
-import pytest
 from datetime import datetime
-from typing import Dict, Any
+from typing import Any, Dict
 
-from github_project_manager_mcp.models.prd import (
-    PRD,
-    PRDStatus,
-    PRDPriority,
-)
+import pytest
+
+from github_project_manager_mcp.models.prd import PRD, PRDPriority, PRDStatus
 
 
 class TestPRDStatus:
@@ -55,12 +52,8 @@ class TestPRDModel:
 
     def test_prd_creation_minimal(self):
         """Test creating a PRD with minimal required fields."""
-        prd = PRD(
-            id="PRD_123",
-            project_id="PVT_kwDOBQfyVc0FoQ",
-            title="Test PRD"
-        )
-        
+        prd = PRD(id="PRD_123", project_id="PVT_kwDOBQfyVc0FoQ", title="Test PRD")
+
         assert prd.id == "PRD_123"
         assert prd.project_id == "PVT_kwDOBQfyVc0FoQ"
         assert prd.title == "Test PRD"
@@ -72,7 +65,7 @@ class TestPRDModel:
     def test_prd_creation_full(self):
         """Test creating a PRD with all fields specified."""
         custom_fields = {"estimation": "5 days", "team": "Backend"}
-        
+
         prd = PRD(
             id="PRD_456",
             project_id="PVT_kwDOBQfyVc0FoQ",
@@ -92,9 +85,9 @@ class TestPRDModel:
             content_type="Issue",
             position=3,
             archived=False,
-            custom_fields=custom_fields
+            custom_fields=custom_fields,
         )
-        
+
         assert prd.description == "Detailed PRD description"
         assert prd.acceptance_criteria == "User can complete the workflow"
         assert prd.technical_requirements == "React frontend, Node.js backend"
@@ -110,47 +103,27 @@ class TestPRDModel:
     def test_prd_validation_empty_title(self):
         """Test that PRD validation fails with empty title."""
         with pytest.raises(ValueError, match="PRD title cannot be empty"):
-            PRD(
-                id="PRD_123",
-                project_id="PVT_kwDOBQfyVc0FoQ",
-                title=""
-            )
+            PRD(id="PRD_123", project_id="PVT_kwDOBQfyVc0FoQ", title="")
 
     def test_prd_validation_whitespace_title(self):
         """Test that PRD validation fails with whitespace-only title."""
         with pytest.raises(ValueError, match="PRD title cannot be empty"):
-            PRD(
-                id="PRD_123",
-                project_id="PVT_kwDOBQfyVc0FoQ",
-                title="   "
-            )
+            PRD(id="PRD_123", project_id="PVT_kwDOBQfyVc0FoQ", title="   ")
 
     def test_prd_validation_empty_project_id(self):
         """Test that PRD validation fails with empty project_id."""
         with pytest.raises(ValueError, match="PRD must be associated with a project"):
-            PRD(
-                id="PRD_123",
-                project_id="",
-                title="Test PRD"
-            )
+            PRD(id="PRD_123", project_id="", title="Test PRD")
 
     def test_prd_validation_whitespace_project_id(self):
         """Test that PRD validation fails with whitespace-only project_id."""
         with pytest.raises(ValueError, match="PRD must be associated with a project"):
-            PRD(
-                id="PRD_123",
-                project_id="   ",
-                title="Test PRD"
-            )
+            PRD(id="PRD_123", project_id="   ", title="Test PRD")
 
     def test_prd_to_dict_minimal(self):
         """Test converting minimal PRD to dictionary."""
-        prd = PRD(
-            id="PRD_123",
-            project_id="PVT_kwDOBQfyVc0FoQ",
-            title="Test PRD"
-        )
-        
+        prd = PRD(id="PRD_123", project_id="PVT_kwDOBQfyVc0FoQ", title="Test PRD")
+
         result = prd.to_dict()
         expected = {
             "id": "PRD_123",
@@ -160,13 +133,13 @@ class TestPRDModel:
             "priority": "Medium",
             "archived": False,
         }
-        
+
         assert result == expected
 
     def test_prd_to_dict_full(self):
         """Test converting full PRD to dictionary."""
         custom_fields = {"estimation": "5 days"}
-        
+
         prd = PRD(
             id="PRD_456",
             project_id="PVT_kwDOBQfyVc0FoQ",
@@ -178,11 +151,11 @@ class TestPRDModel:
             creator_login="user1",
             content_type="Issue",
             position=1,
-            custom_fields=custom_fields
+            custom_fields=custom_fields,
         )
-        
+
         result = prd.to_dict()
-        
+
         assert result["id"] == "PRD_456"
         assert result["title"] == "Full PRD"
         assert result["description"] == "Test description"
@@ -201,33 +174,21 @@ class TestPRDModel:
             project_id="PVT_kwDOBQfyVc0FoQ",
             title="Test PRD",
             status=PRDStatus.IN_PROGRESS,
-            priority=PRDPriority.HIGH
+            priority=PRDPriority.HIGH,
         )
-        
+
         result = str(prd)
         expected = "PRD: Test PRD (In Progress, High)"
         assert result == expected
 
     def test_prd_equality(self):
         """Test PRD equality comparison based on ID."""
-        prd1 = PRD(
-            id="PRD_123",
-            project_id="PVT_kwDOBQfyVc0FoQ",
-            title="PRD 1"
-        )
-        
-        prd2 = PRD(
-            id="PRD_123",
-            project_id="PVT_different",
-            title="PRD 2"
-        )
-        
-        prd3 = PRD(
-            id="PRD_456",
-            project_id="PVT_kwDOBQfyVc0FoQ",
-            title="PRD 3"
-        )
-        
+        prd1 = PRD(id="PRD_123", project_id="PVT_kwDOBQfyVc0FoQ", title="PRD 1")
+
+        prd2 = PRD(id="PRD_123", project_id="PVT_different", title="PRD 2")
+
+        prd3 = PRD(id="PRD_456", project_id="PVT_kwDOBQfyVc0FoQ", title="PRD 3")
+
         assert prd1 == prd2  # Same ID
         assert prd1 != prd3  # Different ID
         assert prd1 != "not a PRD"  # Different type
@@ -251,30 +212,25 @@ class TestPRDFromGitHubItem:
                 "body": "Detailed description of the feature",
                 "url": "https://github.com/user/repo/issues/1",
                 "author": {"login": "creator1"},
-                "assignees": {
-                    "nodes": [{"login": "assignee1"}]
-                }
+                "assignees": {"nodes": [{"login": "assignee1"}]},
             },
             "fieldValues": {
                 "nodes": [
                     {
                         "field": {"name": "Status"},
-                        "singleSelectOption": {"name": "In Progress"}
+                        "singleSelectOption": {"name": "In Progress"},
                     },
                     {
                         "field": {"name": "Priority"},
-                        "singleSelectOption": {"name": "High"}
+                        "singleSelectOption": {"name": "High"},
                     },
-                    {
-                        "field": {"name": "Estimation"},
-                        "text": "3 days"
-                    }
+                    {"field": {"name": "Estimation"}, "text": "3 days"},
                 ]
-            }
+            },
         }
-        
+
         prd = PRD.from_github_item(item_data, "PVT_kwDOBQfyVc0FoQ")
-        
+
         assert prd.id == "PVTI_123"
         assert prd.project_id == "PVT_kwDOBQfyVc0FoQ"
         assert prd.title == "Feature Request PRD"
@@ -298,11 +254,11 @@ class TestPRDFromGitHubItem:
             "updatedAt": "2025-01-01T00:00:00Z",
             "position": 2,
             "archived": False,
-            "fieldValues": {"nodes": []}
+            "fieldValues": {"nodes": []},
         }
-        
+
         prd = PRD.from_github_item(item_data, "PVT_kwDOBQfyVc0FoQ")
-        
+
         assert prd.id == "PVTI_789"
         assert prd.title == "Draft PRD"
         assert prd.description == "Draft PRD content"
@@ -321,14 +277,14 @@ class TestPRDFromGitHubItem:
                 "nodes": [
                     {
                         "field": {"name": "Status"},
-                        "singleSelectOption": {"name": "Invalid Status"}
+                        "singleSelectOption": {"name": "Invalid Status"},
                     }
                 ]
-            }
+            },
         }
-        
+
         prd = PRD.from_github_item(item_data, "PVT_kwDOBQfyVc0FoQ")
-        
+
         # Should fall back to default status
         assert prd.status == PRDStatus.BACKLOG
 
@@ -342,13 +298,13 @@ class TestPRDFromGitHubItem:
                 "nodes": [
                     {
                         "field": {"name": "Priority"},
-                        "singleSelectOption": {"name": "Invalid Priority"}
+                        "singleSelectOption": {"name": "Invalid Priority"},
                     }
                 ]
-            }
+            },
         }
-        
+
         prd = PRD.from_github_item(item_data, "PVT_kwDOBQfyVc0FoQ")
-        
+
         # Should fall back to default priority
-        assert prd.priority == PRDPriority.MEDIUM 
+        assert prd.priority == PRDPriority.MEDIUM

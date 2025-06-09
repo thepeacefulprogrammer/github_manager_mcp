@@ -62,6 +62,7 @@
 - ✅ `test_connection` - Verified working
 - ✅ `list_projects` - **WORKING WITH REAL GITHUB DATA** (found 3 projects for thepeacefulprogrammer)
 - ✅ `create_project` - **SUCCESSFULLY CREATED REAL GITHUB PROJECT** (MCP Test Project: PVT_kwHOAGo2TM4A7C1T)
+- ✅ `update_project` - **COMPLETE PROJECT METADATA MANAGEMENT** (title, description, visibility, README updates with comprehensive validation)
 - ✅ `delete_project` - **IMPLEMENTED WITH SAFETY CHECKS** (requires explicit confirmation, prevents accidental deletions)
 - ✅ `get_project_details` - **COMPREHENSIVE PROJECT INFORMATION RETRIEVAL** (detailed project metadata, descriptions, and status)
 - ✅ `add_prd_to_project` - **FULLY FUNCTIONAL WITH COMPREHENSIVE PRD CREATION** (creates draft issues with structured descriptions, acceptance criteria, technical requirements, business value)
@@ -69,7 +70,19 @@
 - ✅ GitHub Authentication - Working with .env token
 - ✅ GraphQL API - Successfully calling GitHub Projects v2 API
 
-**NEXT TASK**: Continue implementing PRD management tools (section 4.3: list_prds) or move to task management functionality.
+**CURRENT FOCUS**: **PROJECT-LEVEL CRUD OPERATIONS COMPLETED!** 
+- ✅ Project Create, Read, Update, Delete - **ALL COMPLETED**
+- 🎯 **NEXT PRIORITY**: PRD-level CRUD completion (list_prds, update_prd)
+
+**DEVELOPMENT STRATEGY**: **HIERARCHICAL CRUD COMPLETION**
+Following a systematic approach to ensure solid foundations:
+1. ✅ **Complete Project Level CRUD** (100% - ALL OPERATIONS COMPLETED!)
+2. 📋 **Complete PRD Level CRUD** (50% - list_prds, update_prd remaining) 
+3. 📝 **Complete Task Level CRUD** (0% - all operations needed)
+4. ✅ **Complete Subtask Level CRUD** (0% - all operations needed)
+5. 🔄 **Implement Status Management & Workflow Automation**
+
+**NEXT TASK**: Implement `list_prds` to continue PRD-level CRUD completion, followed by `update_prd`.
 
 ## Tasks
 
@@ -105,7 +118,7 @@
   - [x] 1.6.7 Verify all tools show up correctly in Cursor's MCP tool list
   - [x] 1.6.8 Create troubleshooting documentation for common MCP setup issues
 
-- [x] 2.0 Implement GitHub GraphQL API Integration
+- [x] 2.0 Implement GitHub GraphQL API Integration (COMPLETED)
   - [x] 2.1 Create GitHub client class with GraphQL endpoint configuration
   - [x] 2.2 Implement authentication handling using Personal Access Tokens
   - [x] 2.3 Create GraphQL query builder utilities for Projects v2 API
@@ -123,7 +136,14 @@
   - [x] 3.4 Migrate existing MCP server implementation to use FastMCP architecture
   - [x] 3.5 Implement get_project_details MCP tool handler for retrieving project information
   - [x] 3.6 Implement delete_project MCP tool handler for removing test projects and cleanup
-  - [ ] 3.7 Implement archive_project MCP tool handler for project lifecycle management
+  - [x] 3.7 **COMPLETED**: Implement update_project MCP tool handler for project metadata management
+    - [x] 3.7.1 Research GitHub Projects v2 updateProjectV2 GraphQL mutation capabilities
+    - [x] 3.7.2 Create update_project_handler with parameter validation for name, description, visibility
+    - [x] 3.7.3 Build GraphQL mutation for updateProjectV2 with proper field mapping
+    - [x] 3.7.4 Add comprehensive error handling and validation logic
+    - [x] 3.7.5 Register update_project tool in FastMCP server with proper parameter schema
+    - [ ] 3.7.6 Test update_project with real GitHub API calls and various update scenarios
+    - [x] 3.7.7 Add unit tests for update_project functionality with TDD approach
   - [ ] 3.8 Create status column configuration and management for projects
   - [ ] 3.9 Add project validation logic for required fields and constraints
   - [ ] 3.10 Implement project search and filtering capabilities
