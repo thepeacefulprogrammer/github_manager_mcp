@@ -1,0 +1,46 @@
+coverage:
+  status:
+    project:
+      default:
+        target: 70%
+        threshold: 1%
+        if_no_uploads: error
+        if_not_found: success
+        if_ci_failed: error
+    patch:
+      default:
+        target: 50%
+        threshold: 5%
+        if_no_uploads: error
+        if_not_found: success
+        if_ci_failed: error
+
+comment:
+  layout: "reach, diff, flags, files"
+  behavior: default
+  require_changes: false
+
+ignore:
+  - "tests/"
+  - "docs/"
+  - "tasks/"
+  - "**/__pycache__/"
+  - "**/*.pyc"
+  - "**/conftest.py"
+  - "setup.py"
+  - "**/*_test.py"
+  - "**/*test*.py"
+
+flags:
+  unittests:
+    paths:
+      - src/
+
+# Don't fail on import-only changes
+parsers:
+  gcov:
+    branch_detection:
+      conditional: yes
+      loop: yes
+      method: no
+      macro: no
