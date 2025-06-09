@@ -653,6 +653,189 @@ class TestDeleteProjectTool:
             assert "GitHub client not initialized" in result.content[0].text
 
 
+class TestGetProjectDetailsTool:
+    """Test cases for get_project_details MCP tool handler."""
+
+    def test_get_project_details_tool_definition(self):
+        """Test that get_project_details tool is properly defined."""
+        from github_project_manager_mcp.handlers.project_handlers import (
+            GET_PROJECT_DETAILS_TOOL,
+        )
+
+        tool = GET_PROJECT_DETAILS_TOOL
+
+        # Check basic properties
+        assert tool.name == "get_project_details"
+        assert "detailed" in tool.description.lower()
+        assert "project" in tool.description.lower()
+
+        # Check input schema
+        schema = tool.inputSchema
+        assert schema["type"] == "object"
+
+        # Check required fields
+        required_fields = schema["required"]
+        assert "project_id" in required_fields
+
+        # Check properties
+        properties = schema["properties"]
+        assert "project_id" in properties
+
+        # Check project_id property
+        assert "ID of the project" in properties["project_id"]["description"]
+
+    @pytest.mark.asyncio
+    async def test_get_project_details_success(self):
+        """Test successful project details retrieval."""
+        # Mock inputs
+        arguments = {
+            "project_id": "PVT_kwDOBQfyVc0FoQ"
+        }
+
+        # Expected GitHub API response
+        mock_project_data = {
+            "node": {
+                "id": "PVT_kwDOBQfyVc0FoQ",
+                "title": "Test Project",
+                "shortDescription": "A test project for validation",
+                "url": "https://github.com/users/testuser/projects/1",
+                "number": 1,
+                "createdAt": "2025-01-01T00:00:00Z",
+                "updatedAt": "2025-01-02T00:00:00Z",
+                "viewerCanUpdate": True,
+                "owner": {"login": "testuser"}
+            }
+        }
+
+        # Mock the GitHub client
+        mock_client = AsyncMock()
+        mock_client.query.return_value = mock_project_data
+
+        # Patch the github_client global variable
+        with patch(
+            "github_project_manager_mcp.handlers.project_handlers.github_client",
+            mock_client,
+        ):
+            from github_project_manager_mcp.handlers.project_handlers import (
+                get_project_details_handler,
+            )
+
+            result = await get_project_details_handler(arguments)
+
+            # Verify the result
+            assert not result.isError
+            assert len(result.content) == 1
+            assert result.content[0].type == "text"
+
+            # Check success message content
+            content_text = result.content[0].text
+            assert "Test Project" in content_text
+            assert "PVT_kwDOBQfyVc0FoQ" in content_text
+            assert "testuser" in content_text
+            # The description will show short_description since description is None
+            assert "A test project for validation" in content_text
+
+            # Verify API call was made
+            mock_client.query.assert_called_once()
+
+    @pytest.mark.asyncio
+    async def test_get_project_details_missing_project_id(self):
+        """Test handling of missing project_id."""
+        arguments = {}
+
+        from github_project_manager_mcp.handlers.project_handlers import (
+            get_project_details_handler,
+        )
+
+        result = await get_project_details_handler(arguments)
+
+        # Should return error result
+        assert result.isError
+        assert len(result.content) == 1
+        assert result.content[0].type == "text"
+        assert "'project_id' parameter is required" in result.content[0].text
+
+    @pytest.mark.asyncio
+    async def test_get_project_details_invalid_project_id(self):
+        """Test handling of project not found."""
+        arguments = {
+            "project_id": "invalid-project-id"
+        }
+
+        # Mock GitHub API error response
+        mock_client = AsyncMock()
+        mock_client.query.side_effect = Exception("Could not resolve to a node with the global id")
+
+        with patch(
+            "github_project_manager_mcp.handlers.project_handlers.github_client",
+            mock_client,
+        ):
+            from github_project_manager_mcp.handlers.project_handlers import (
+                get_project_details_handler,
+            )
+
+            result = await get_project_details_handler(arguments)
+
+            # Should return error result
+            assert result.isError
+            assert len(result.content) == 1
+            assert result.content[0].type == "text"
+            assert "Error retrieving project details" in result.content[0].text
+
+    @pytest.mark.asyncio
+    async def test_get_project_details_project_not_found(self):
+        """Test handling when project doesn't exist."""
+        arguments = {
+            "project_id": "PVT_kwDOBQfyVc0FoQ"
+        }
+
+        # Mock GitHub API response with null node
+        mock_project_data = {"node": None}
+
+        mock_client = AsyncMock()
+        mock_client.query.return_value = mock_project_data
+
+        with patch(
+            "github_project_manager_mcp.handlers.project_handlers.github_client",
+            mock_client,
+        ):
+            from github_project_manager_mcp.handlers.project_handlers import (
+                get_project_details_handler,
+            )
+
+            result = await get_project_details_handler(arguments)
+
+            # Should return error result
+            assert result.isError
+            assert len(result.content) == 1
+            assert result.content[0].type == "text"
+            assert "Project not found" in result.content[0].text
+
+    @pytest.mark.asyncio
+    async def test_get_project_details_client_not_initialized(self):
+        """Test handling when GitHub client is not initialized."""
+        arguments = {
+            "project_id": "PVT_kwDOBQfyVc0FoQ"
+        }
+
+        # Mock None client
+        with patch(
+            "github_project_manager_mcp.handlers.project_handlers.github_client",
+            None,
+        ):
+            from github_project_manager_mcp.handlers.project_handlers import (
+                get_project_details_handler,
+            )
+
+            result = await get_project_details_handler(arguments)
+
+            # Should return error result
+            assert result.isError
+            assert len(result.content) == 1
+            assert result.content[0].type == "text"
+            assert "GitHub client not initialized" in result.content[0].text
+
+
 class TestProjectHandlerRegistration:
     """Test cases for project handler registration with MCP server."""
 
@@ -660,12 +843,13 @@ class TestProjectHandlerRegistration:
         """Test that PROJECT_TOOLS contains the expected tools."""
         from github_project_manager_mcp.handlers.project_handlers import PROJECT_TOOLS
 
-        # Should contain create_project, list_projects, and delete_project tools
+        # Should contain all project management tools
         tool_names = [tool.name for tool in PROJECT_TOOLS]
         assert "create_project" in tool_names
         assert "list_projects" in tool_names
         assert "delete_project" in tool_names
-        assert len(PROJECT_TOOLS) == 3
+        assert "get_project_details" in tool_names
+        assert len(PROJECT_TOOLS) == 4
 
     def test_project_tool_handlers_mapping(self):
         """Test that PROJECT_TOOL_HANDLERS contains the expected mappings."""
@@ -677,6 +861,8 @@ class TestProjectHandlerRegistration:
         assert "create_project" in PROJECT_TOOL_HANDLERS
         assert "list_projects" in PROJECT_TOOL_HANDLERS
         assert "delete_project" in PROJECT_TOOL_HANDLERS
+        assert "get_project_details" in PROJECT_TOOL_HANDLERS
         assert callable(PROJECT_TOOL_HANDLERS["create_project"])
         assert callable(PROJECT_TOOL_HANDLERS["list_projects"])
         assert callable(PROJECT_TOOL_HANDLERS["delete_project"])
+        assert callable(PROJECT_TOOL_HANDLERS["get_project_details"])

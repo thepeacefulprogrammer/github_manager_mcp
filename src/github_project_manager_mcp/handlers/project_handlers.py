@@ -557,11 +557,135 @@ The project has been permanently deleted and cannot be recovered."""
         )
 
 
+# Get project details tool definition
+GET_PROJECT_DETAILS_TOOL = Tool(
+    name="get_project_details",
+    description="Retrieve detailed information about a GitHub Project v2 by ID.",
+    inputSchema={
+        "type": "object",
+        "properties": {
+            "project_id": {
+                "type": "string",
+                "description": "ID of the project to retrieve details for (e.g., 'PVT_kwDOBQfyVc0FoQ')",
+            },
+        },
+        "required": ["project_id"],
+    },
+)
+
+
+async def get_project_details_handler(arguments: Dict[str, Any]) -> CallToolResult:
+    """
+    Handle get_project_details MCP tool calls.
+
+    Args:
+        arguments: Tool arguments containing project_id
+
+    Returns:
+        CallToolResult with project details or error information
+    """
+    try:
+        # Validate required arguments
+        project_id = arguments.get("project_id")
+
+        if not project_id:
+            return CallToolResult(
+                content=[
+                    TextContent(
+                        type="text", text="Error: 'project_id' parameter is required"
+                    )
+                ],
+                isError=True,
+            )
+
+        if not github_client:
+            return CallToolResult(
+                content=[
+                    TextContent(
+                        type="text", text="Error: GitHub client not initialized"
+                    )
+                ],
+                isError=True,
+            )
+
+        logger.info(f"Getting project details for ID: {project_id}")
+
+        # Build the GraphQL query
+        query = query_builder.get_project(project_id=project_id)
+
+        # Execute the query
+        try:
+            result = await github_client.query(query)
+            project_data = result.get("node")
+
+            if not project_data:
+                return CallToolResult(
+                    content=[
+                        TextContent(
+                            type="text",
+                            text=f"Error: Project not found with ID: {project_id}",
+                        )
+                    ],
+                    isError=True,
+                )
+
+            # Create a Project model instance for validation and response formatting
+            project = Project.from_graphql(project_data)
+
+            # Success response with detailed project information
+            response_text = f"""# Project Details
+
+**Basic Information:**
+- **Name:** {project.title}
+- **ID:** {project.id}
+- **Number:** #{project.number}
+- **URL:** {project.url}
+
+**Description:**
+{project.description or project.short_description or 'No description provided'}
+
+**Metadata:**
+- **Owner:** {project_data.get('owner', {}).get('login', 'Unknown')}
+- **Created:** {project.created_at}
+- **Updated:** {project.updated_at}
+- **Can Update:** {project_data.get('viewerCanUpdate', 'Unknown')}
+
+**Status:**
+- **State:** Active
+- **Visibility:** {project_data.get('visibility', 'Unknown')}
+
+This project is ready for use and can be managed through GitHub Projects v2."""
+
+            return CallToolResult(
+                content=[TextContent(type="text", text=response_text)], isError=False
+            )
+
+        except Exception as e:
+            logger.error(f"GitHub API error retrieving project details: {e}")
+            return CallToolResult(
+                content=[
+                    TextContent(
+                        type="text",
+                        text=f"Error retrieving project details: {str(e)}",
+                    )
+                ],
+                isError=True,
+            )
+
+    except Exception as e:
+        logger.error(f"Unexpected error in get_project_details_handler: {e}")
+        return CallToolResult(
+            content=[TextContent(type="text", text=f"Unexpected error: {str(e)}")],
+            isError=True,
+        )
+
+
 # All available project management tools
 PROJECT_TOOLS = [
     CREATE_PROJECT_TOOL,
     LIST_PROJECTS_TOOL,
     DELETE_PROJECT_TOOL,
+    GET_PROJECT_DETAILS_TOOL,
 ]
 
 # Tool handlers mapping
@@ -569,4 +693,5 @@ PROJECT_TOOL_HANDLERS = {
     "create_project": create_project_handler,
     "list_projects": list_projects_handler,
     "delete_project": delete_project_handler,
+    "get_project_details": get_project_details_handler,
 }

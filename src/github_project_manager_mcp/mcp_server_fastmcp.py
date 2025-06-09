@@ -85,6 +85,7 @@ try:
     from github_project_manager_mcp.handlers.project_handlers import (
         create_project_handler,
         delete_project_handler,
+        get_project_details_handler,
         initialize_github_client,
         list_projects_handler,
     )
@@ -357,8 +358,39 @@ class GitHubProjectManagerMCPFastServer:
                 logger.error(f"Traceback: {traceback.format_exc()}")
                 return f'{{"success": false, "error": "Failed to delete project: {str(e)}"}}'
 
+        # Get project details tool
+        @self.mcp.tool()
+        async def get_project_details(project_id: str) -> str:
+            """Retrieve detailed information about a GitHub Project v2 by ID."""
+            logger.info(f"Get project details called: project_id={project_id}")
+
+            try:
+                await self._ensure_async_initialized()
+
+                if not self.github_client:
+                    return '{"success": false, "error": "GitHub client not initialized - check token configuration"}'
+
+                # Call the existing get project details handler
+                args = {
+                    "project_id": project_id,
+                }
+
+                result = await get_project_details_handler(args)
+                logger.info(f"Get project details result: {result}")
+
+                # Extract text content from CallToolResult
+                if hasattr(result, "content") and result.content:
+                    return result.content[0].text
+                else:
+                    return str(result)
+
+            except Exception as e:
+                logger.error(f"Error in get_project_details: {e}")
+                logger.error(f"Traceback: {traceback.format_exc()}")
+                return f'{{"success": false, "error": "Failed to get project details: {str(e)}"}}'
+
         logger.info(
-            f"Registered {len([test_connection, create_project, list_projects, delete_project])} MCP tools"
+            f"Registered {len([test_connection, create_project, list_projects, delete_project, get_project_details])} MCP tools"
         )
 
 
