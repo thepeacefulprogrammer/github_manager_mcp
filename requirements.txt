@@ -1,6 +1,6 @@
 # Core dependencies for GitHub Project Manager MCP Server
-# Model Context Protocol library
-mcp>=1.0.0
+# FastMCP library for proper MCP protocol compliance with Cursor
+fastmcp>=0.1.0
 
 # HTTP client for GitHub API interactions
 httpx>=0.25.0
@@ -13,3 +13,13 @@ pydantic>=2.0.0
 
 # CLI interface support
 click>=8.0.0
+
+# Async support and typing extensions
+asyncio
+typing-extensions>=4.13.0
+
+# YAML configuration support
+PyYAML>=6.0
+
+# Additional MCP protocol support
+mcp>=1.0.0

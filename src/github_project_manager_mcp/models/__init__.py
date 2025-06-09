@@ -7,8 +7,28 @@ This module contains the data models for GitHub project management entities.
 from typing import List
 
 # Import models when they're available
+try:
+    from .project import (
+        Project,
+        ProjectField,
+        ProjectFieldConfiguration,
+        ProjectFieldIteration,
+        ProjectFieldOption,
+        ProjectVisibility,
+    )
+
+    PROJECT_IMPORTS = [
+        "Project",
+        "ProjectVisibility",
+        "ProjectField",
+        "ProjectFieldOption",
+        "ProjectFieldIteration",
+        "ProjectFieldConfiguration",
+    ]
+except ImportError:
+    PROJECT_IMPORTS = []
+
 # try:
-#     from .project import *
 #     from .prd import *
 #     from .task import *
 #     from .subtask import *
@@ -17,5 +37,6 @@ from typing import List
 #     pass
 
 __all__: List[str] = [
+    *PROJECT_IMPORTS,
     # Will be populated as models are implemented
 ]

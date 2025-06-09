@@ -1,0 +1,435 @@
+"""
+MCP tool handlers for project management operations.
+
+This module implements MCP tool handlers for GitHub Projects v2 management,
+including creating, listing, updating, and managing projects.
+"""
+
+import logging
+import re
+from typing import Any, Dict, Optional
+
+from mcp.server.models import InitializationOptions
+from mcp.types import CallToolResult, TextContent, Tool
+
+from ..github_client import GitHubClient
+from ..models.project import Project
+from ..utils.query_builder import ProjectQueryBuilder
+
+logger = logging.getLogger(__name__)
+
+
+# GitHub Client instance (will be initialized by the MCP server)
+github_client: Optional[GitHubClient] = None
+query_builder = ProjectQueryBuilder()
+
+
+def initialize_github_client(token: str) -> None:
+    """
+    Initialize the GitHub client with authentication token.
+
+    Args:
+        token: GitHub Personal Access Token
+    """
+    global github_client
+    github_client = GitHubClient(token=token, rate_limit_enabled=True)
+    logger.info("GitHub client initialized for project handlers")
+
+
+def validate_repository_format(repository: str) -> bool:
+    """
+    Validate repository format as 'owner/repo'.
+
+    Args:
+        repository: Repository string to validate
+
+    Returns:
+        True if format is valid, False otherwise
+    """
+    if not repository or not isinstance(repository, str):
+        return False
+
+    parts = repository.split("/")
+    if len(parts) != 2:
+        return False
+
+    owner, repo = parts
+    if not owner or not repo:
+        return False
+
+    return True
+
+
+async def get_owner_id_from_repository(repository: str) -> str:
+    """
+    Get the GitHub node ID of the repository owner.
+
+    Args:
+        repository: Repository in format "owner/repo"
+
+    Returns:
+        GitHub node ID of the owner
+
+    Raises:
+        ValueError: If repository format is invalid or owner not found
+    """
+    # Validate repository format
+    if not validate_repository_format(repository):
+        raise ValueError(
+            f"Invalid repository format: {repository}. Expected 'owner/repo'"
+        )
+
+    owner, repo_name = repository.split("/", 1)
+
+    # GraphQL query to get owner ID
+    query = f"""
+    query {{
+      repository(owner: "{owner}", name: "{repo_name}") {{
+        owner {{
+          id
+          login
+        }}
+      }}
+    }}
+    """
+
+    if not github_client:
+        raise ValueError("GitHub client not initialized")
+
+    try:
+        result = await github_client.query(query)
+        owner_data = result.get("repository", {}).get("owner", {})
+
+        if not owner_data:
+            raise ValueError(
+                f"Repository not found or owner not accessible: {repository}"
+            )
+
+        owner_id = owner_data.get("id")
+        if not owner_id:
+            raise ValueError(f"Could not get owner ID for repository: {repository}")
+
+        logger.debug(f"Found owner ID {owner_id} for repository {repository}")
+        return owner_id
+
+    except Exception as e:
+        logger.error(f"Error getting owner ID for repository {repository}: {e}")
+        raise ValueError(
+            f"Failed to get owner information for repository {repository}: {str(e)}"
+        )
+
+
+# Tool definition for create_project
+CREATE_PROJECT_TOOL = Tool(
+    name="create_project",
+    description="Create a new GitHub Projects v2 project for the specified repository",
+    inputSchema={
+        "type": "object",
+        "properties": {
+            "name": {"type": "string", "description": "Name of the project"},
+            "description": {
+                "type": "string",
+                "description": "Description of the project",
+            },
+            "repository": {
+                "type": "string",
+                "description": "Repository in format 'owner/repo' (e.g., 'octocat/Hello-World')",
+            },
+            "visibility": {
+                "type": "string",
+                "enum": ["PUBLIC", "PRIVATE"],
+                "description": "Project visibility (optional, defaults to PRIVATE)",
+            },
+        },
+        "required": ["name", "description", "repository"],
+    },
+)
+
+
+# Tool definition for list_projects
+LIST_PROJECTS_TOOL = Tool(
+    name="list_projects",
+    description="List GitHub Projects v2 projects for a user or organization with filtering and pagination support",
+    inputSchema={
+        "type": "object",
+        "properties": {
+            "owner": {
+                "type": "string",
+                "description": "Username or organization name to list projects for",
+            },
+            "first": {
+                "type": "integer",
+                "description": "Number of projects to fetch (pagination, max 100)",
+                "minimum": 1,
+                "maximum": 100,
+            },
+            "after": {
+                "type": "string",
+                "description": "Cursor for pagination to fetch projects after this point",
+            },
+        },
+        "required": ["owner"],
+    },
+)
+
+
+async def create_project_handler(arguments: Dict[str, Any]) -> CallToolResult:
+    """
+    Handle create_project MCP tool calls.
+
+    Args:
+        arguments: Tool arguments containing name, description, repository, and optional visibility
+
+    Returns:
+        CallToolResult with success/error information
+    """
+    try:
+        # Validate required arguments
+        name = arguments.get("name")
+        description = arguments.get("description")
+        repository = arguments.get("repository")
+        visibility = arguments.get("visibility", "PRIVATE")
+
+        if not name:
+            return CallToolResult(
+                content=[
+                    TextContent(type="text", text="Error: 'name' parameter is required")
+                ],
+                isError=True,
+            )
+
+        # Description is optional for project creation
+        # GitHub Projects v2 API doesn't accept description in CreateProjectV2Input
+
+        if not repository:
+            return CallToolResult(
+                content=[
+                    TextContent(
+                        type="text", text="Error: 'repository' parameter is required"
+                    )
+                ],
+                isError=True,
+            )
+
+        if not github_client:
+            return CallToolResult(
+                content=[
+                    TextContent(
+                        type="text", text="Error: GitHub client not initialized"
+                    )
+                ],
+                isError=True,
+            )
+
+        logger.info(f"Creating project '{name}' for repository '{repository}'")
+
+        # Get owner ID from repository
+        try:
+            owner_id = await get_owner_id_from_repository(repository)
+        except ValueError as e:
+            return CallToolResult(
+                content=[TextContent(type="text", text=f"Error: {str(e)}")],
+                isError=True,
+            )
+
+        # Build the GraphQL mutation
+        mutation = query_builder.create_project(
+            owner_id=owner_id, title=name, description=description
+        )
+
+        # Execute the mutation
+        try:
+            result = await github_client.mutate(mutation)
+            project_data = result.get("createProjectV2", {}).get("projectV2", {})
+
+            if not project_data:
+                return CallToolResult(
+                    content=[
+                        TextContent(
+                            type="text",
+                            text="Error: Failed to create project - no data returned",
+                        )
+                    ],
+                    isError=True,
+                )
+
+            # Create a Project model instance for validation and response formatting
+            project = Project.from_graphql(project_data)
+
+            # Success response
+            response_text = f"""✅ Successfully created project!
+
+**Project Details:**
+- **Name:** {project.title}
+- **ID:** {project.id}
+- **URL:** {project.url}
+- **Description:** {project.description or 'No description'}
+- **Created:** {project.created_at}
+- **Repository:** {repository}
+
+The project is now ready for use in GitHub Projects v2."""
+
+            return CallToolResult(
+                content=[TextContent(type="text", text=response_text)], isError=False
+            )
+
+        except Exception as e:
+            logger.error(f"GitHub API error creating project: {e}")
+            return CallToolResult(
+                content=[
+                    TextContent(type="text", text=f"Error creating project: {str(e)}")
+                ],
+                isError=True,
+            )
+
+    except Exception as e:
+        logger.error(f"Unexpected error in create_project_handler: {e}")
+        return CallToolResult(
+            content=[TextContent(type="text", text=f"Unexpected error: {str(e)}")],
+            isError=True,
+        )
+
+
+async def list_projects_handler(arguments: Dict[str, Any]) -> CallToolResult:
+    """
+    Handle list_projects MCP tool calls.
+
+    Args:
+        arguments: Tool arguments containing owner and optional pagination parameters
+
+    Returns:
+        CallToolResult with project list or error information
+    """
+    try:
+        # Validate required arguments
+        owner = arguments.get("owner")
+        first = arguments.get("first")
+        after = arguments.get("after")
+
+        if not owner:
+            return CallToolResult(
+                content=[
+                    TextContent(
+                        type="text", text="Error: 'owner' parameter is required"
+                    )
+                ],
+                isError=True,
+            )
+
+        if not github_client:
+            return CallToolResult(
+                content=[
+                    TextContent(
+                        type="text", text="Error: GitHub client not initialized"
+                    )
+                ],
+                isError=True,
+            )
+
+        logger.info(
+            f"Listing projects for owner '{owner}' with pagination: first={first}, after={after}"
+        )
+
+        # Build the GraphQL query
+        query = query_builder.list_projects(owner=owner, first=first, after=after)
+
+        # Execute the query
+        try:
+            result = await github_client.query(query)
+            user_data = result.get("user")
+
+            if not user_data:
+                return CallToolResult(
+                    content=[
+                        TextContent(type="text", text=f"Error: User not found: {owner}")
+                    ],
+                    isError=True,
+                )
+
+            projects_data = user_data.get("projectsV2", {})
+            total_count = projects_data.get("totalCount", 0)
+            project_nodes = projects_data.get("nodes", [])
+            page_info = projects_data.get("pageInfo", {})
+
+            # Handle empty results
+            if total_count == 0:
+                response_text = f"No projects found for {owner}"
+                return CallToolResult(
+                    content=[TextContent(type="text", text=response_text)],
+                    isError=False,
+                )
+
+            # Format the response
+            response_lines = [
+                f"# Projects for {owner}",
+                f"Total: {total_count} projects",
+                f"Showing {len(project_nodes)} projects",
+                "",
+            ]
+
+            # Add pagination info if available
+            if page_info:
+                has_next = page_info.get("hasNextPage", False)
+                next_cursor = page_info.get("endCursor")
+                response_lines.extend(
+                    [
+                        f"Has next page: {has_next}",
+                        f"Next cursor: {next_cursor}" if next_cursor else "",
+                        "",
+                    ]
+                )
+
+            # Add project details
+            for i, project_node in enumerate(project_nodes, 1):
+                # Convert to Project model for consistent formatting
+                project = Project.from_graphql(project_node)
+
+                # Extract viewer_can_update directly from the raw data if available
+                viewer_can_update = project_node.get("viewerCanUpdate", "Unknown")
+
+                response_lines.extend(
+                    [
+                        f"## {i}. {project.title}",
+                        f"**ID:** {project.id}",
+                        f"**URL:** {project.url}",
+                        f"**Description:** {project.description or 'No description'}",
+                        f"**Created:** {project.created_at}",
+                        f"**Updated:** {project.updated_at}",
+                        f"**Number:** #{project.number}",
+                        f"**Can Update:** {viewer_can_update}",
+                        "",
+                    ]
+                )
+
+            response_text = "\n".join(response_lines)
+
+            return CallToolResult(
+                content=[TextContent(type="text", text=response_text)], isError=False
+            )
+
+        except Exception as e:
+            logger.error(f"GitHub API error listing projects: {e}")
+            return CallToolResult(
+                content=[TextContent(type="text", text=f"API Error: {str(e)}")],
+                isError=True,
+            )
+
+    except Exception as e:
+        logger.error(f"Unexpected error in list_projects_handler: {e}")
+        return CallToolResult(
+            content=[TextContent(type="text", text=f"Unexpected error: {str(e)}")],
+            isError=True,
+        )
+
+
+# All available project management tools
+PROJECT_TOOLS = [
+    CREATE_PROJECT_TOOL,
+    LIST_PROJECTS_TOOL,
+]
+
+# Tool handlers mapping
+PROJECT_TOOL_HANDLERS = {
+    "create_project": create_project_handler,
+    "list_projects": list_projects_handler,
+}

@@ -26,12 +26,12 @@ class ProjectQueryBuilder:
     DEFAULT_PROJECT_FIELDS = [
         "id",
         "title",
-        "description",
         "url",
         "createdAt",
         "updatedAt",
         "viewerCanUpdate",
         "number",
+        "shortDescription",
     ]
 
     # Default fields for project items
@@ -268,8 +268,8 @@ query {{
             f"title: {self._escape_string(title)}",
         ]
 
-        if description:
-            input_fields.append(f"description: {self._escape_string(description)}")
+        # Note: GitHub Projects v2 API doesn't accept description in CreateProjectV2Input
+        # Description can be added later via updateProjectV2 mutation if needed
 
         mutation = f"""
 mutation {{
@@ -279,9 +279,18 @@ mutation {{
     projectV2 {{
       id
       title
-      description
+      shortDescription
       url
+      number
       createdAt
+      owner {{
+        ... on User {{
+          login
+        }}
+        ... on Organization {{
+          login
+        }}
+      }}
     }}
   }}
 }}
@@ -331,7 +340,7 @@ mutation {{
     projectV2 {{
       id
       title
-      description
+      shortDescription
       updatedAt
     }}
   }}
