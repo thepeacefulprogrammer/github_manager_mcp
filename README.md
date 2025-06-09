@@ -1,5 +1,22 @@
 # GitHub Project Manager MCP Server
 
+[![CI](https://github.com/thepeacefulprogrammer/github_manager_mcp/workflows/CI/badge.svg)](https://github.com/thepeacefulprogrammer/github_manager_mcp/actions)
+[![codecov](https://codecov.io/gh/thepeacefulprogrammer/github_manager_mcp/branch/main/graph/badge.svg)](https://codecov.io/gh/thepeacefulprogrammer/github_manager_mcp)
+[![Python Version](https://img.shields.io/badge/python-3.10%2B-blue)](https://www.python.org/downloads/)
+[![PyPI version](https://img.shields.io/badge/version-0.1.0-green)](https://github.com/thepeacefulprogrammer/github_manager_mcp/releases)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+
+[![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
+[![Imports: isort](https://img.shields.io/badge/%20imports-isort-%231674b1?style=flat&labelColor=ef8336)](https://pycqa.github.io/isort/)
+[![Type Checked: mypy](https://img.shields.io/badge/type_checked-mypy-blue)](https://mypy-lang.org/)
+[![Pre-commit: enabled](https://img.shields.io/badge/pre--commit-enabled-brightgreen?logo=pre-commit&logoColor=white)](https://pre-commit.com/)
+[![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](http://makeapullrequest.com)
+[![GitHub stars](https://img.shields.io/github/stars/thepeacefulprogrammer/github_manager_mcp)](https://github.com/thepeacefulprogrammer/github_manager_mcp/stargazers)
+[![GitHub forks](https://img.shields.io/github/forks/thepeacefulprogrammer/github_manager_mcp)](https://github.com/thepeacefulprogrammer/github_manager_mcp/network)
+[![GitHub commit activity](https://img.shields.io/github/commit-activity/m/thepeacefulprogrammer/github_manager_mcp)](https://github.com/thepeacefulprogrammer/github_manager_mcp/commits/main)
+[![GitHub issues](https://img.shields.io/github/issues/thepeacefulprogrammer/github_manager_mcp)](https://github.com/thepeacefulprogrammer/github_manager_mcp/issues)
+[![GitHub last commit](https://img.shields.io/github/last-commit/thepeacefulprogrammer/github_manager_mcp)](https://github.com/thepeacefulprogrammer/github_manager_mcp/commits/main)
+
 An open-source Model Context Protocol (MCP) server that provides automated GitHub project management capabilities for AI assistants and applications, specifically designed to integrate with PRD-driven development workflows.
 
 ## 🚀 Overview
