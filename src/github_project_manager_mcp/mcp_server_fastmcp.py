@@ -137,7 +137,9 @@ except ImportError as e:
     sys.exit(1)
 
 try:
-    from github_project_manager_mcp.handlers.subtask_handlers import add_subtask_handler
+    from github_project_manager_mcp.handlers.subtask_handlers import (
+        add_subtask_handler,
+    )
     from github_project_manager_mcp.handlers.subtask_handlers import (
         initialize_github_client as initialize_subtask_github_client,
     )
