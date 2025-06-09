@@ -422,14 +422,151 @@ async def list_projects_handler(arguments: Dict[str, Any]) -> CallToolResult:
         )
 
 
+# Delete project tool definition
+DELETE_PROJECT_TOOL = Tool(
+    name="delete_project",
+    description="Delete a GitHub Project v2 by ID. This action is permanent and cannot be undone.",
+    inputSchema={
+        "type": "object",
+        "properties": {
+            "project_id": {
+                "type": "string",
+                "description": "ID of the project to delete (e.g., 'PVT_kwDOBQfyVc0FoQ')",
+            },
+            "confirm": {
+                "type": "boolean",
+                "description": "Must be true to confirm deletion. Required safety check.",
+            },
+        },
+        "required": ["project_id", "confirm"],
+    },
+)
+
+
+async def delete_project_handler(arguments: Dict[str, Any]) -> CallToolResult:
+    """
+    Handle delete_project MCP tool calls.
+
+    Args:
+        arguments: Tool arguments containing project_id and confirmation
+
+    Returns:
+        CallToolResult with deletion status or error information
+    """
+    try:
+        # Validate required arguments
+        project_id = arguments.get("project_id")
+        confirm = arguments.get("confirm")
+
+        if not project_id:
+            return CallToolResult(
+                content=[
+                    TextContent(
+                        type="text", text="Error: 'project_id' parameter is required"
+                    )
+                ],
+                isError=True,
+            )
+
+        if confirm is None:
+            return CallToolResult(
+                content=[
+                    TextContent(
+                        type="text",
+                        text="Error: Must explicitly confirm deletion by setting 'confirm' to true",
+                    )
+                ],
+                isError=True,
+            )
+
+        if not confirm:
+            return CallToolResult(
+                content=[
+                    TextContent(
+                        type="text",
+                        text="Error: Deletion cancelled. Set 'confirm' to true to proceed.",
+                    )
+                ],
+                isError=True,
+            )
+
+        if not github_client:
+            return CallToolResult(
+                content=[
+                    TextContent(
+                        type="text", text="Error: GitHub client not initialized"
+                    )
+                ],
+                isError=True,
+            )
+
+        logger.info(f"Deleting project with ID: {project_id}")
+
+        # Build the GraphQL mutation
+        mutation = query_builder.delete_project(project_id=project_id)
+
+        # Execute the mutation
+        try:
+            result = await github_client.mutate(mutation)
+            project_data = result.get("deleteProjectV2", {}).get("projectV2", {})
+
+            if not project_data:
+                return CallToolResult(
+                    content=[
+                        TextContent(
+                            type="text",
+                            text="Error: Failed to delete project - no data returned",
+                        )
+                    ],
+                    isError=True,
+                )
+
+            # Extract project information from the response
+            project_id_returned = project_data.get("id", project_id)
+            project_title = project_data.get("title", "Unknown")
+            owner_login = project_data.get("owner", {}).get("login", "Unknown")
+
+            # Success response
+            response_text = f"""✅ Successfully deleted project!
+
+**Deleted Project:**
+- **Name:** {project_title}
+- **ID:** {project_id_returned}
+- **Owner:** {owner_login}
+
+The project has been permanently deleted and cannot be recovered."""
+
+            return CallToolResult(
+                content=[TextContent(type="text", text=response_text)], isError=False
+            )
+
+        except Exception as e:
+            logger.error(f"GitHub API error deleting project: {e}")
+            return CallToolResult(
+                content=[
+                    TextContent(type="text", text=f"Error deleting project: {str(e)}")
+                ],
+                isError=True,
+            )
+
+    except Exception as e:
+        logger.error(f"Unexpected error in delete_project_handler: {e}")
+        return CallToolResult(
+            content=[TextContent(type="text", text=f"Unexpected error: {str(e)}")],
+            isError=True,
+        )
+
+
 # All available project management tools
 PROJECT_TOOLS = [
     CREATE_PROJECT_TOOL,
     LIST_PROJECTS_TOOL,
+    DELETE_PROJECT_TOOL,
 ]
 
 # Tool handlers mapping
 PROJECT_TOOL_HANDLERS = {
     "create_project": create_project_handler,
     "list_projects": list_projects_handler,
+    "delete_project": delete_project_handler,
 }

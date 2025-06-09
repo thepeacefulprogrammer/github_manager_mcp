@@ -84,6 +84,7 @@ except ImportError as e:
 try:
     from github_project_manager_mcp.handlers.project_handlers import (
         create_project_handler,
+        delete_project_handler,
         initialize_github_client,
         list_projects_handler,
     )
@@ -322,8 +323,42 @@ class GitHubProjectManagerMCPFastServer:
                 logger.error(f"Traceback: {traceback.format_exc()}")
                 return f'{{"success": false, "error": "Failed to list projects: {str(e)}"}}'
 
+        # Delete project tool
+        @self.mcp.tool()
+        async def delete_project(project_id: str, confirm: bool) -> str:
+            """Delete a GitHub project by ID. This action is permanent and cannot be undone."""
+            logger.info(
+                f"Delete project called: project_id={project_id}, confirm={confirm}"
+            )
+
+            try:
+                await self._ensure_async_initialized()
+
+                if not self.github_client:
+                    return '{"success": false, "error": "GitHub client not initialized - check token configuration"}'
+
+                # Call the existing delete project handler
+                args = {
+                    "project_id": project_id,
+                    "confirm": confirm,
+                }
+
+                result = await delete_project_handler(args)
+                logger.info(f"Delete project result: {result}")
+
+                # Extract text content from CallToolResult
+                if hasattr(result, "content") and result.content:
+                    return result.content[0].text
+                else:
+                    return str(result)
+
+            except Exception as e:
+                logger.error(f"Error in delete_project: {e}")
+                logger.error(f"Traceback: {traceback.format_exc()}")
+                return f'{{"success": false, "error": "Failed to delete project: {str(e)}"}}'
+
         logger.info(
-            f"Registered {len([test_connection, create_project, list_projects])} MCP tools"
+            f"Registered {len([test_connection, create_project, list_projects, delete_project])} MCP tools"
         )
 
 

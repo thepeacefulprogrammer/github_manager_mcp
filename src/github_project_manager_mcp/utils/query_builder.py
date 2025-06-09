@@ -373,6 +373,15 @@ mutation {{
   }}) {{
     projectV2 {{
       id
+      title
+      owner {{
+        ... on User {{
+          login
+        }}
+        ... on Organization {{
+          login
+        }}
+      }}
     }}
   }}
 }}

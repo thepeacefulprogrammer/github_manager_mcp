@@ -462,6 +462,197 @@ class TestListProjectsTool:
             assert "nonexistent-user" in result.content[0].text
 
 
+class TestDeleteProjectTool:
+    """Test cases for delete_project MCP tool handler."""
+
+    def test_delete_project_tool_definition(self):
+        """Test that delete_project tool is properly defined."""
+        from github_project_manager_mcp.handlers.project_handlers import (
+            DELETE_PROJECT_TOOL,
+        )
+
+        tool = DELETE_PROJECT_TOOL
+
+        # Check basic properties
+        assert tool.name == "delete_project"
+        assert "delete" in tool.description.lower()
+        assert "project" in tool.description.lower()
+
+        # Check input schema
+        schema = tool.inputSchema
+        assert schema["type"] == "object"
+
+        # Check required fields
+        required_fields = schema["required"]
+        assert "project_id" in required_fields
+
+        # Check properties
+        properties = schema["properties"]
+        assert "project_id" in properties
+        assert "confirm" in properties
+
+        # Check project_id property
+        assert "ID of the project to delete" in properties["project_id"]["description"]
+
+    @pytest.mark.asyncio
+    async def test_delete_project_success(self):
+        """Test successful project deletion."""
+        # Mock inputs
+        arguments = {"project_id": "PVT_kwDOBQfyVc0FoQ", "confirm": True}
+
+        # Expected GitHub API response
+        mock_delete_data = {
+            "deleteProjectV2": {
+                "projectV2": {
+                    "id": "PVT_kwDOBQfyVc0FoQ",
+                    "title": "Test Project",
+                    "owner": {"login": "test-org"},
+                }
+            }
+        }
+
+        # Mock the GitHub client
+        mock_client = AsyncMock()
+        mock_client.mutate.return_value = mock_delete_data
+
+        # Patch the github_client global variable
+        with patch(
+            "github_project_manager_mcp.handlers.project_handlers.github_client",
+            mock_client,
+        ):
+            from github_project_manager_mcp.handlers.project_handlers import (
+                delete_project_handler,
+            )
+
+            result = await delete_project_handler(arguments)
+
+            # Verify the result
+            assert not result.isError
+            assert len(result.content) == 1
+            assert result.content[0].type == "text"
+
+            # Check success message content
+            content_text = result.content[0].text
+            assert "✅ Successfully deleted project!" in content_text
+            assert "Test Project" in content_text
+            assert "PVT_kwDOBQfyVc0FoQ" in content_text
+
+            # Verify API call was made
+            mock_client.mutate.assert_called_once()
+
+    @pytest.mark.asyncio
+    async def test_delete_project_missing_confirmation(self):
+        """Test handling of missing confirmation."""
+        arguments = {
+            "project_id": "PVT_kwDOBQfyVc0FoQ"
+            # Missing confirm parameter
+        }
+
+        from github_project_manager_mcp.handlers.project_handlers import (
+            delete_project_handler,
+        )
+
+        result = await delete_project_handler(arguments)
+
+        # Should return error result
+        assert result.isError
+        assert len(result.content) == 1
+        assert result.content[0].type == "text"
+        assert (
+            "Must explicitly confirm deletion by setting 'confirm' to true"
+            in result.content[0].text
+        )
+
+    @pytest.mark.asyncio
+    async def test_delete_project_confirmation_false(self):
+        """Test handling of explicit false confirmation."""
+        arguments = {"project_id": "PVT_kwDOBQfyVc0FoQ", "confirm": False}
+
+        from github_project_manager_mcp.handlers.project_handlers import (
+            delete_project_handler,
+        )
+
+        result = await delete_project_handler(arguments)
+
+        # Should return error result
+        assert result.isError
+        assert len(result.content) == 1
+        assert result.content[0].type == "text"
+        assert (
+            "Deletion cancelled. Set 'confirm' to true to proceed"
+            in result.content[0].text
+        )
+
+    @pytest.mark.asyncio
+    async def test_delete_project_missing_project_id(self):
+        """Test handling of missing project_id."""
+        arguments = {
+            "confirm": True
+            # Missing project_id
+        }
+
+        from github_project_manager_mcp.handlers.project_handlers import (
+            delete_project_handler,
+        )
+
+        result = await delete_project_handler(arguments)
+
+        # Should return error result
+        assert result.isError
+        assert len(result.content) == 1
+        assert result.content[0].type == "text"
+        assert "'project_id' parameter is required" in result.content[0].text
+
+    @pytest.mark.asyncio
+    async def test_delete_project_invalid_project_id(self):
+        """Test handling of project not found."""
+        arguments = {"project_id": "invalid-project-id", "confirm": True}
+
+        # Mock GitHub API error response
+        mock_client = AsyncMock()
+        mock_client.mutate.side_effect = Exception(
+            "Could not resolve to a node with the global id"
+        )
+
+        with patch(
+            "github_project_manager_mcp.handlers.project_handlers.github_client",
+            mock_client,
+        ):
+            from github_project_manager_mcp.handlers.project_handlers import (
+                delete_project_handler,
+            )
+
+            result = await delete_project_handler(arguments)
+
+            # Should return error result
+            assert result.isError
+            assert len(result.content) == 1
+            assert result.content[0].type == "text"
+            assert "Error deleting project" in result.content[0].text
+
+    @pytest.mark.asyncio
+    async def test_delete_project_client_not_initialized(self):
+        """Test handling when GitHub client is not initialized."""
+        arguments = {"project_id": "PVT_kwDOBQfyVc0FoQ", "confirm": True}
+
+        # Mock None client
+        with patch(
+            "github_project_manager_mcp.handlers.project_handlers.github_client",
+            None,
+        ):
+            from github_project_manager_mcp.handlers.project_handlers import (
+                delete_project_handler,
+            )
+
+            result = await delete_project_handler(arguments)
+
+            # Should return error result
+            assert result.isError
+            assert len(result.content) == 1
+            assert result.content[0].type == "text"
+            assert "GitHub client not initialized" in result.content[0].text
+
+
 class TestProjectHandlerRegistration:
     """Test cases for project handler registration with MCP server."""
 
@@ -469,9 +660,12 @@ class TestProjectHandlerRegistration:
         """Test that PROJECT_TOOLS contains the expected tools."""
         from github_project_manager_mcp.handlers.project_handlers import PROJECT_TOOLS
 
-        # Should contain create_project tool
+        # Should contain create_project, list_projects, and delete_project tools
         tool_names = [tool.name for tool in PROJECT_TOOLS]
         assert "create_project" in tool_names
+        assert "list_projects" in tool_names
+        assert "delete_project" in tool_names
+        assert len(PROJECT_TOOLS) == 3
 
     def test_project_tool_handlers_mapping(self):
         """Test that PROJECT_TOOL_HANDLERS contains the expected mappings."""
@@ -479,6 +673,10 @@ class TestProjectHandlerRegistration:
             PROJECT_TOOL_HANDLERS,
         )
 
-        # Should contain create_project handler
+        # Should contain all project handlers
         assert "create_project" in PROJECT_TOOL_HANDLERS
+        assert "list_projects" in PROJECT_TOOL_HANDLERS
+        assert "delete_project" in PROJECT_TOOL_HANDLERS
         assert callable(PROJECT_TOOL_HANDLERS["create_project"])
+        assert callable(PROJECT_TOOL_HANDLERS["list_projects"])
+        assert callable(PROJECT_TOOL_HANDLERS["delete_project"])
