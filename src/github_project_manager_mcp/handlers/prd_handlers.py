@@ -508,6 +508,573 @@ The PRD has been permanently removed from the project. This action cannot be und
         )
 
 
+async def list_prds_in_project_handler(arguments: Dict[str, Any]) -> CallToolResult:
+    """
+    Handle list_prds_in_project tool calls.
+
+    Lists all Product Requirements Documents (PRDs) within a GitHub project.
+    Supports pagination and returns detailed information about each PRD including
+    status, priority, assignees, and creation/update timestamps.
+
+    Args:
+        arguments: Tool call arguments containing:
+            - project_id (required): GitHub project ID
+            - first (optional): Number of PRDs to fetch (pagination, default: 25)
+            - after (optional): Cursor for pagination
+
+    Returns:
+        CallToolResult with PRD list and pagination info
+    """
+    try:
+        # Validate required parameters
+        project_id = arguments.get("project_id", "").strip()
+
+        if not project_id:
+            return CallToolResult(
+                content=[
+                    TextContent(
+                        type="text",
+                        text="Error: project_id is required to list PRDs in project",
+                    )
+                ],
+                isError=True,
+            )
+
+        # Extract optional pagination parameters
+        first = arguments.get("first", 25)
+        after = arguments.get("after")
+
+        # Validate first parameter
+        if first is not None:
+            try:
+                first = int(first)
+                if first <= 0 or first > 100:
+                    raise ValueError("first must be between 1 and 100")
+            except (ValueError, TypeError):
+                return CallToolResult(
+                    content=[
+                        TextContent(
+                            type="text",
+                            text="Error: 'first' parameter must be a positive integer between 1 and 100",
+                        )
+                    ],
+                    isError=True,
+                )
+
+        # Check if GitHub client is initialized
+        github_client = get_github_client()
+        if github_client is None:
+            return CallToolResult(
+                content=[
+                    TextContent(
+                        type="text",
+                        text="Error: GitHub client not initialized. Please check your authentication.",
+                    )
+                ],
+                isError=True,
+            )
+
+        # Build and execute query
+        query_builder = ProjectQueryBuilder()
+        query = query_builder.list_prds_in_project(
+            project_id=project_id, first=first, after=after
+        )
+
+        logger.info(f"Listing PRDs in project: {project_id}")
+        response = await github_client.query(query)
+
+        # Debug: log the full response
+        logger.debug(f"GitHub API response: {response}")
+
+        # Check for GraphQL errors
+        if "errors" in response:
+            error_messages = [
+                error.get("message", "Unknown error") for error in response["errors"]
+            ]
+            logger.error(f"GraphQL errors: {error_messages}")
+            return CallToolResult(
+                content=[
+                    TextContent(
+                        type="text",
+                        text=f"Error listing PRDs: GraphQL errors: {'; '.join(error_messages)}",
+                    )
+                ],
+                isError=True,
+            )
+
+        # Extract project data
+        # Handle response structure - check if data is nested under "data" key or direct
+        if "data" in response:
+            data = response["data"]
+        else:
+            data = response
+
+        node = data.get("node")
+        if not node:
+            return CallToolResult(
+                content=[
+                    TextContent(
+                        type="text",
+                        text=f"Error: Project with ID '{project_id}' not found or not accessible",
+                    )
+                ],
+                isError=True,
+            )
+
+        project_title = node.get("title", "Unknown Project")
+        items_data = node.get("items", {})
+        total_count = items_data.get("totalCount", 0)
+        page_info = items_data.get("pageInfo", {})
+        items = items_data.get("nodes", [])
+
+        # Filter for PRDs (draft issues and issues) and format response
+        prds = []
+        for item in items:
+            content = item.get("content")
+            if not content:
+                continue
+
+            # Extract item metadata
+            item_id = item.get("id", "Unknown")
+            item_created_at = item.get("createdAt", "Unknown")
+            item_updated_at = item.get("updatedAt", "Unknown")
+
+            # Extract field values (status, priority, etc.)
+            field_values = {}
+            for field_value in item.get("fieldValues", {}).get("nodes", []):
+                field_name = None
+                field_val = None
+
+                if "field" in field_value and field_value["field"]:
+                    field_name = field_value["field"].get("name")
+
+                if "text" in field_value:
+                    field_val = field_value["text"]
+                elif "name" in field_value:
+                    field_val = field_value["name"]
+
+                if field_name and field_val:
+                    field_values[field_name] = field_val
+
+            # Handle both DraftIssue and Issue types
+            if "title" in content:
+                title = content.get("title", "Untitled PRD")
+                body = content.get("body", "")
+                created_at = content.get("createdAt", item_created_at)
+                updated_at = content.get("updatedAt", item_updated_at)
+
+                # Extract assignees
+                assignees = []
+                assignees_data = content.get("assignees", {})
+                if assignees_data and "nodes" in assignees_data:
+                    for assignee in assignees_data["nodes"]:
+                        login = assignee.get("login", "")
+                        name = assignee.get("name", "")
+                        if login:
+                            assignees.append(
+                                f"{name} (@{login})" if name else f"@{login}"
+                            )
+
+                # Determine PRD type and additional info
+                prd_type = "Draft Issue"
+                additional_info = {}
+
+                if "number" in content:  # This is a regular Issue
+                    prd_type = "Issue"
+                    additional_info["number"] = content.get("number")
+                    additional_info["state"] = content.get("state", "OPEN")
+                    repo_info = content.get("repository", {})
+                    if repo_info:
+                        repo_name = repo_info.get("name", "")
+                        repo_owner = repo_info.get("owner", {}).get("login", "")
+                        if repo_name and repo_owner:
+                            additional_info["repository"] = f"{repo_owner}/{repo_name}"
+
+                prds.append(
+                    {
+                        "item_id": item_id,
+                        "title": title,
+                        "body": body,
+                        "type": prd_type,
+                        "created_at": created_at,
+                        "updated_at": updated_at,
+                        "assignees": assignees,
+                        "field_values": field_values,
+                        "additional_info": additional_info,
+                    }
+                )
+
+        # Build response text
+        result_lines = [
+            f"📋 **PRDs in Project: {project_title}**",
+            f"**Project ID:** {project_id}",
+            f"**Total Items:** {total_count}",
+            f"**PRDs Found:** {len(prds)}",
+            "",
+        ]
+
+        if not prds:
+            result_lines.append("No PRDs found in this project.")
+        else:
+            for i, prd in enumerate(prds, 1):
+                result_lines.append(f"**{i}. {prd['title']}**")
+                result_lines.append(f"   - **Type:** {prd['type']}")
+                result_lines.append(f"   - **Item ID:** {prd['item_id']}")
+
+                # Add additional info for regular issues
+                if prd["additional_info"]:
+                    for key, value in prd["additional_info"].items():
+                        result_lines.append(f"   - **{key.title()}:** {value}")
+
+                # Add assignees if present
+                if prd["assignees"]:
+                    result_lines.append(
+                        f"   - **Assignees:** {', '.join(prd['assignees'])}"
+                    )
+
+                # Add field values (status, priority, etc.)
+                if prd["field_values"]:
+                    for field_name, field_value in prd["field_values"].items():
+                        result_lines.append(f"   - **{field_name}:** {field_value}")
+
+                result_lines.append(f"   - **Created:** {prd['created_at']}")
+                result_lines.append(f"   - **Updated:** {prd['updated_at']}")
+
+                # Add body preview if present
+                if prd["body"]:
+                    body_preview = prd["body"][:100]
+                    if len(prd["body"]) > 100:
+                        body_preview += "..."
+                    result_lines.append(f"   - **Description:** {body_preview}")
+
+                result_lines.append("")  # Empty line between PRDs
+
+        # Add pagination info
+        if page_info:
+            has_next = page_info.get("hasNextPage", False)
+            has_prev = page_info.get("hasPreviousPage", False)
+            start_cursor = page_info.get("startCursor")
+            end_cursor = page_info.get("endCursor")
+
+            if has_next or has_prev:
+                result_lines.append("**Pagination Info:**")
+                if has_prev:
+                    result_lines.append(f"   - Has previous page")
+                if has_next:
+                    result_lines.append(
+                        f"   - Has next page (use after: '{end_cursor}')"
+                    )
+                result_lines.append("")
+
+        result_text = "\n".join(result_lines)
+
+        logger.info(f"Found {len(prds)} PRDs in project '{project_id}'")
+
+        return CallToolResult(
+            content=[TextContent(type="text", text=result_text)],
+            isError=False,
+        )
+
+    except Exception as e:
+        logger.error(f"Error listing PRDs in project: {e}", exc_info=True)
+        return CallToolResult(
+            content=[
+                TextContent(
+                    type="text", text=f"Error listing PRDs in project: {str(e)}"
+                )
+            ],
+            isError=True,
+        )
+
+
+async def update_prd_handler(arguments: Dict[str, Any]) -> CallToolResult:
+    """
+    Handle update_prd tool calls.
+
+    Updates a Product Requirements Document (PRD) in a GitHub project. This handler
+    supports updating title, body content, and assignee assignments. The update
+    process involves two steps:
+    1. Query the project item to get the draft issue content ID
+    2. Update the draft issue using the content ID
+
+    Args:
+        arguments: Tool call arguments containing:
+            - prd_item_id (required): GitHub project item ID (PVTI_...)
+            - title (optional): New title for the PRD
+            - body (optional): New body content for the PRD
+            - assignee_ids (optional): List of user IDs to assign to the PRD
+
+    Returns:
+        CallToolResult with updated PRD details or error information
+    """
+    try:
+        # Validate required parameters
+        prd_item_id = arguments.get("prd_item_id", "").strip()
+        if not prd_item_id:
+            return CallToolResult(
+                content=[
+                    TextContent(
+                        type="text",
+                        text="Error: prd_item_id is required to update PRD",
+                    )
+                ],
+                isError=True,
+            )
+
+        # Extract optional parameters
+        title = arguments.get("title")
+        body = arguments.get("body")
+        assignee_ids = arguments.get("assignee_ids")
+
+        # Validate that at least one update field is provided
+        if not any([title is not None, body is not None, assignee_ids is not None]):
+            return CallToolResult(
+                content=[
+                    TextContent(
+                        type="text",
+                        text="Error: At least one of title, body, or assignee_ids must be provided for update",
+                    )
+                ],
+                isError=True,
+            )
+
+        # Validate assignee_ids if provided
+        if assignee_ids is not None:
+            if not isinstance(assignee_ids, list):
+                return CallToolResult(
+                    content=[
+                        TextContent(
+                            type="text",
+                            text="Error: assignee_ids must be a list of user IDs",
+                        )
+                    ],
+                    isError=True,
+                )
+
+        # Check if GitHub client is initialized
+        github_client = get_github_client()
+        if github_client is None:
+            return CallToolResult(
+                content=[
+                    TextContent(
+                        type="text",
+                        text="Error: GitHub client not initialized. Please check your authentication.",
+                    )
+                ],
+                isError=True,
+            )
+
+        # Step 1: Get the draft issue content ID from the project item
+        query_builder = ProjectQueryBuilder()
+        content_id_query = query_builder.get_prd_content_id(prd_item_id)
+
+        logger.info(
+            f"Querying for draft issue content ID for project item: {prd_item_id}"
+        )
+        content_response = await github_client.query(content_id_query)
+
+        # Debug: log the content ID response
+        logger.debug(f"Content ID query response: {content_response}")
+
+        # Check for GraphQL errors
+        if "errors" in content_response:
+            error_messages = [
+                error.get("message", "Unknown error")
+                for error in content_response["errors"]
+            ]
+            logger.error(f"GraphQL errors in content ID query: {error_messages}")
+            return CallToolResult(
+                content=[
+                    TextContent(
+                        type="text",
+                        text=f"Error getting PRD content ID: GraphQL errors: {'; '.join(error_messages)}",
+                    )
+                ],
+                isError=True,
+            )
+
+        # Extract draft issue content ID
+        if "data" in content_response:
+            data = content_response["data"]
+        else:
+            data = content_response
+
+        node_data = data.get("node")
+        if not node_data:
+            return CallToolResult(
+                content=[
+                    TextContent(
+                        type="text",
+                        text=f"Error: Could not find project item with ID {prd_item_id}",
+                    )
+                ],
+                isError=True,
+            )
+
+        content_data = node_data.get("content")
+        if not content_data:
+            return CallToolResult(
+                content=[
+                    TextContent(
+                        type="text",
+                        text=f"Error: Project item {prd_item_id} does not have content (may not be a draft issue)",
+                    )
+                ],
+                isError=True,
+            )
+
+        draft_issue_id = content_data.get("id")
+        if not draft_issue_id:
+            return CallToolResult(
+                content=[
+                    TextContent(
+                        type="text",
+                        text=f"Error: Could not extract draft issue ID from project item {prd_item_id}",
+                    )
+                ],
+                isError=True,
+            )
+
+        logger.info(f"Found draft issue content ID: {draft_issue_id}")
+
+        # Step 2: Build and execute the update mutation using the draft issue content ID
+        mutation = query_builder.update_prd(
+            prd_item_id=draft_issue_id,  # Use the content ID, not the project item ID
+            title=title,
+            body=body,
+            assignee_ids=assignee_ids,
+        )
+
+        logger.info(
+            f"Updating draft issue '{draft_issue_id}' (from project item '{prd_item_id}')"
+        )
+        response = await github_client.mutate(mutation)
+
+        # Debug: log the full response
+        logger.debug(f"GitHub API response: {response}")
+
+        # Check for GraphQL errors
+        if "errors" in response:
+            error_messages = [
+                error.get("message", "Unknown error") for error in response["errors"]
+            ]
+            logger.error(f"GraphQL errors: {error_messages}")
+            return CallToolResult(
+                content=[
+                    TextContent(
+                        type="text",
+                        text=f"Error updating PRD: GraphQL errors: {'; '.join(error_messages)}",
+                    )
+                ],
+                isError=True,
+            )
+
+        # Extract update result
+        if "data" in response:
+            data = response["data"]
+        else:
+            data = response
+
+        update_result = data.get("updateProjectV2DraftIssue", {})
+        draft_issue_data = update_result.get("draftIssue")
+
+        if not draft_issue_data:
+            return CallToolResult(
+                content=[
+                    TextContent(
+                        type="text",
+                        text=f"Error: No draft issue data returned from update. Response: {response}",
+                    )
+                ],
+                isError=True,
+            )
+
+        # Extract updated PRD information
+        updated_title = draft_issue_data.get("title", "")
+        updated_body = draft_issue_data.get("body", "")
+        updated_id = draft_issue_data.get("id", "")
+        created_at = draft_issue_data.get("createdAt", "")
+        updated_at = draft_issue_data.get("updatedAt", "")
+
+        # Extract assignee information
+        assignees_data = draft_issue_data.get("assignees", {})
+        assignee_count = assignees_data.get("totalCount", 0)
+        assignee_nodes = assignees_data.get("nodes", [])
+        assignee_info = []
+        for assignee in assignee_nodes:
+            login = assignee.get("login", "")
+            name = assignee.get("name", "") or login
+            assignee_info.append(f"{name} (@{login})")
+
+        # Extract project information
+        project_items = draft_issue_data.get("projectV2Items", {})
+        project_nodes = project_items.get("nodes", [])
+        project_info = []
+        for project_item in project_nodes:
+            project = project_item.get("project", {})
+            project_title = project.get("title", "Unknown Project")
+            project_id = project.get("id", "")
+            project_info.append(f"{project_title} ({project_id})")
+
+        # Format response
+        updated_fields = []
+        if title is not None:
+            updated_fields.append("title")
+        if body is not None:
+            updated_fields.append("body")
+        if assignee_ids is not None:
+            updated_fields.append("assignees")
+
+        response_text = f"""✅ PRD successfully updated!
+
+**Updated PRD Details:**
+- **ID:** {updated_id}
+- **Title:** {updated_title}
+- **Created:** {created_at}
+- **Updated:** {updated_at}
+
+**Updated Fields:** {', '.join(updated_fields)}
+
+**Assignees:** {assignee_count} assigned
+{chr(10).join([f"  - {assignee}" for assignee in assignee_info]) if assignee_info else "  - None"}
+
+**Associated Projects:**
+{chr(10).join([f"  - {project}" for project in project_info]) if project_info else "  - None"}"""
+
+        if body is not None and len(updated_body) > 100:
+            response_text += f"""
+
+**Body Preview:**
+{updated_body[:100]}..."""
+        elif body is not None:
+            response_text += f"""
+
+**Body:**
+{updated_body}"""
+
+        return CallToolResult(
+            content=[
+                TextContent(
+                    type="text",
+                    text=response_text,
+                )
+            ],
+            isError=False,
+        )
+
+    except Exception as e:
+        logger.error(f"Unexpected error in update_prd_handler: {e}")
+        return CallToolResult(
+            content=[
+                TextContent(
+                    type="text",
+                    text=f"Error: An unexpected error occurred while updating PRD: {str(e)}",
+                )
+            ],
+            isError=True,
+        )
+
+
 # Define MCP tools for PRD management
 PRD_TOOLS = [
     Tool(
@@ -587,10 +1154,68 @@ PRD_TOOLS = [
             "additionalProperties": False,
         },
     ),
+    Tool(
+        name="list_prds_in_project",
+        description="List all Product Requirements Documents (PRDs) within a GitHub project with filtering and pagination support",
+        inputSchema={
+            "type": "object",
+            "properties": {
+                "project_id": {
+                    "type": "string",
+                    "description": "GitHub project ID (e.g., 'PVT_kwDOBQfyVc0FoQ')",
+                },
+                "first": {
+                    "type": "integer",
+                    "description": "Number of PRDs to fetch (pagination, max 100)",
+                    "minimum": 1,
+                    "maximum": 100,
+                    "default": 25,
+                },
+                "after": {
+                    "type": "string",
+                    "description": "Cursor for pagination to fetch PRDs after this point",
+                },
+            },
+            "required": ["project_id"],
+            "additionalProperties": False,
+        },
+    ),
+    Tool(
+        name="update_prd",
+        description="Update a Product Requirements Document (PRD) in a GitHub project",
+        inputSchema={
+            "type": "object",
+            "properties": {
+                "prd_item_id": {
+                    "type": "string",
+                    "description": "GitHub project item ID to update",
+                },
+                "title": {
+                    "type": "string",
+                    "description": "New title for the PRD",
+                },
+                "body": {
+                    "type": "string",
+                    "description": "New body content for the PRD",
+                },
+                "assignee_ids": {
+                    "type": "array",
+                    "description": "List of user IDs to assign to the PRD",
+                    "items": {
+                        "type": "string",
+                    },
+                },
+            },
+            "required": ["prd_item_id"],
+            "additionalProperties": False,
+        },
+    ),
 ]
 
 # Map tool names to handler functions
 PRD_TOOL_HANDLERS = {
     "add_prd_to_project": add_prd_to_project_handler,
+    "list_prds_in_project": list_prds_in_project_handler,
     "delete_prd_from_project": delete_prd_from_project_handler,
+    "update_prd": update_prd_handler,
 }

@@ -105,6 +105,10 @@ try:
     from github_project_manager_mcp.handlers.prd_handlers import (
         initialize_github_client as initialize_prd_github_client,
     )
+    from github_project_manager_mcp.handlers.prd_handlers import (
+        list_prds_in_project_handler,
+        update_prd_handler,
+    )
 
     logger.info("Successfully imported PRD handlers")
 except ImportError as e:
@@ -457,6 +461,89 @@ class GitHubProjectManagerMCPFastServer:
                 logger.error(f"Traceback: {traceback.format_exc()}")
                 return f'{{"success": false, "error": "Failed to update project: {str(e)}"}}'
 
+        # List PRDs in project tool
+        @self.mcp.tool()
+        async def list_prds_in_project(
+            project_id: str, first: int = 25, after: str = None
+        ) -> str:
+            """List all Product Requirements Documents (PRDs) within a GitHub project with filtering and pagination support."""
+            logger.info(
+                f"List PRDs in project called: project_id={project_id}, first={first}, after={after}"
+            )
+
+            try:
+                await self._ensure_async_initialized()
+
+                if not self.github_client:
+                    return '{"success": false, "error": "GitHub client not initialized - check token configuration"}'
+
+                # Call the existing list PRDs in project handler
+                args = {
+                    "project_id": project_id,
+                    "first": first,
+                }
+
+                # Add optional after cursor if provided
+                if after:
+                    args["after"] = after
+
+                result = await list_prds_in_project_handler(args)
+                logger.info(f"List PRDs in project result: {result}")
+
+                # Extract text content from CallToolResult
+                if hasattr(result, "content") and result.content:
+                    return result.content[0].text
+                else:
+                    return str(result)
+
+            except Exception as e:
+                logger.error(f"Error in list_prds_in_project: {e}")
+                logger.error(f"Traceback: {traceback.format_exc()}")
+                return f'{{"success": false, "error": "Failed to list PRDs in project: {str(e)}"}}'
+
+        # Update PRD tool
+        @self.mcp.tool()
+        async def update_prd(
+            prd_item_id: str,
+            title: str = None,
+            body: str = None,
+            assignee_ids: list = None,
+        ) -> str:
+            """Update a Product Requirements Document (PRD) in a GitHub project."""
+            logger.info(
+                f"Update PRD called: prd_item_id={prd_item_id}, title={title}, body={body}, assignee_ids={assignee_ids}"
+            )
+
+            try:
+                await self._ensure_async_initialized()
+
+                if not self.github_client:
+                    return '{"success": false, "error": "GitHub client not initialized - check token configuration"}'
+
+                # Call the existing update PRD handler
+                args = {
+                    "prd_item_id": prd_item_id,
+                }
+
+                # Add optional parameters if provided
+                if title is not None:
+                    args["title"] = title
+                if body is not None:
+                    args["body"] = body
+                if assignee_ids is not None:
+                    args["assignee_ids"] = assignee_ids
+
+                result = await update_prd_handler(args)
+
+                if result.isError:
+                    return f'{{"success": false, "error": "{result.content[0].text}"}}'
+
+                return f'{{"success": true, "result": "{result.content[0].text}"}}'
+
+            except Exception as e:
+                logger.error(f"Error in update_prd tool: {e}", exc_info=True)
+                return f'{{"success": false, "error": "Internal error: {str(e)}"}}'
+
         # Add PRD to project tool
         @self.mcp.tool()
         async def add_prd_to_project(
@@ -549,7 +636,7 @@ class GitHubProjectManagerMCPFastServer:
                 return f'{{"success": false, "error": "Failed to delete PRD from project: {str(e)}"}}'
 
         logger.info(
-            f"Registered {len([test_connection, create_project, list_projects, update_project, delete_project, get_project_details, add_prd_to_project, delete_prd_from_project])} MCP tools"
+            f"Registered {len([test_connection, create_project, list_projects, update_project, delete_project, get_project_details, list_prds_in_project, update_prd, add_prd_to_project, delete_prd_from_project])} MCP tools"
         )
 
 

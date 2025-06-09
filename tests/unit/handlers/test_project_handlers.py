@@ -15,8 +15,8 @@ from github_project_manager_mcp.handlers.project_handlers import (
     create_project_handler,
     get_owner_id_from_repository,
     initialize_github_client,
-    validate_repository_format,
     update_project_handler,
+    validate_repository_format,
 )
 
 
@@ -688,9 +688,7 @@ class TestGetProjectDetailsTool:
     async def test_get_project_details_success(self):
         """Test successful project details retrieval."""
         # Mock inputs
-        arguments = {
-            "project_id": "PVT_kwDOBQfyVc0FoQ"
-        }
+        arguments = {"project_id": "PVT_kwDOBQfyVc0FoQ"}
 
         # Expected GitHub API response
         mock_project_data = {
@@ -703,7 +701,7 @@ class TestGetProjectDetailsTool:
                 "createdAt": "2025-01-01T00:00:00Z",
                 "updatedAt": "2025-01-02T00:00:00Z",
                 "viewerCanUpdate": True,
-                "owner": {"login": "testuser"}
+                "owner": {"login": "testuser"},
             }
         }
 
@@ -757,13 +755,13 @@ class TestGetProjectDetailsTool:
     @pytest.mark.asyncio
     async def test_get_project_details_invalid_project_id(self):
         """Test handling of project not found."""
-        arguments = {
-            "project_id": "invalid-project-id"
-        }
+        arguments = {"project_id": "invalid-project-id"}
 
         # Mock GitHub API error response
         mock_client = AsyncMock()
-        mock_client.query.side_effect = Exception("Could not resolve to a node with the global id")
+        mock_client.query.side_effect = Exception(
+            "Could not resolve to a node with the global id"
+        )
 
         with patch(
             "github_project_manager_mcp.handlers.project_handlers.github_client",
@@ -784,9 +782,7 @@ class TestGetProjectDetailsTool:
     @pytest.mark.asyncio
     async def test_get_project_details_project_not_found(self):
         """Test handling when project doesn't exist."""
-        arguments = {
-            "project_id": "PVT_kwDOBQfyVc0FoQ"
-        }
+        arguments = {"project_id": "PVT_kwDOBQfyVc0FoQ"}
 
         # Mock GitHub API response with null node
         mock_project_data = {"node": None}
@@ -813,9 +809,7 @@ class TestGetProjectDetailsTool:
     @pytest.mark.asyncio
     async def test_get_project_details_client_not_initialized(self):
         """Test handling when GitHub client is not initialized."""
-        arguments = {
-            "project_id": "PVT_kwDOBQfyVc0FoQ"
-        }
+        arguments = {"project_id": "PVT_kwDOBQfyVc0FoQ"}
 
         # Mock None client
         with patch(
@@ -900,19 +894,21 @@ class TestUpdateProjectHandler:
             mock_client,
         ):
             # Test with all fields
-            result = await update_project_handler({
-                "project_id": "PVT_kwDOBQfyVc0FoQ",
-                "title": "Updated Project Title",
-                "short_description": "Updated short description", 
-                "readme": "# Updated README\n\nThis is the updated content",
-                "public": True,
-            })
+            result = await update_project_handler(
+                {
+                    "project_id": "PVT_kwDOBQfyVc0FoQ",
+                    "title": "Updated Project Title",
+                    "short_description": "Updated short description",
+                    "readme": "# Updated README\n\nThis is the updated content",
+                    "public": True,
+                }
+            )
 
             # Verify result
             assert not result.isError
             assert len(result.content) == 1
             response_text = result.content[0].text
-            
+
             assert "✅ Successfully updated project!" in response_text
             assert "Updated Project Title" in response_text
             assert "PVT_kwDOBQfyVc0FoQ" in response_text
@@ -956,10 +952,12 @@ class TestUpdateProjectHandler:
             mock_client,
         ):
             # Test with only title
-            result = await update_project_handler({
-                "project_id": "PVT_kwDOBQfyVc0FoQ",
-                "title": "New Title Only",
-            })
+            result = await update_project_handler(
+                {
+                    "project_id": "PVT_kwDOBQfyVc0FoQ",
+                    "title": "New Title Only",
+                }
+            )
 
             # Verify result
             assert not result.isError
@@ -998,10 +996,12 @@ class TestUpdateProjectHandler:
             mock_client,
         ):
             # Test with public set to False
-            result = await update_project_handler({
-                "project_id": "PVT_kwDOBQfyVc0FoQ",
-                "public": False,
-            })
+            result = await update_project_handler(
+                {
+                    "project_id": "PVT_kwDOBQfyVc0FoQ",
+                    "public": False,
+                }
+            )
 
             # Verify result
             assert not result.isError
@@ -1016,9 +1016,11 @@ class TestUpdateProjectHandler:
     @pytest.mark.asyncio
     async def test_update_project_missing_project_id(self):
         """Test error when project_id is missing."""
-        result = await update_project_handler({
-            "title": "Some Title",
-        })
+        result = await update_project_handler(
+            {
+                "title": "Some Title",
+            }
+        )
 
         assert result.isError
         assert len(result.content) == 1
@@ -1027,9 +1029,11 @@ class TestUpdateProjectHandler:
     @pytest.mark.asyncio
     async def test_update_project_no_updates_provided(self):
         """Test error when no update fields are provided."""
-        result = await update_project_handler({
-            "project_id": "PVT_kwDOBQfyVc0FoQ",
-        })
+        result = await update_project_handler(
+            {
+                "project_id": "PVT_kwDOBQfyVc0FoQ",
+            }
+        )
 
         assert result.isError
         assert len(result.content) == 1
@@ -1038,12 +1042,14 @@ class TestUpdateProjectHandler:
     @pytest.mark.asyncio
     async def test_update_project_empty_string_fields_ignored(self):
         """Test that empty string fields are treated as no update."""
-        result = await update_project_handler({
-            "project_id": "PVT_kwDOBQfyVc0FoQ",
-            "title": "",
-            "short_description": "",
-            "readme": "",
-        })
+        result = await update_project_handler(
+            {
+                "project_id": "PVT_kwDOBQfyVc0FoQ",
+                "title": "",
+                "short_description": "",
+                "readme": "",
+            }
+        )
 
         assert result.isError
         assert "At least one field to update must be provided" in result.content[0].text
@@ -1053,14 +1059,17 @@ class TestUpdateProjectHandler:
         """Test error when GitHub client is not initialized."""
         # Temporarily set github_client to None
         from github_project_manager_mcp.handlers import project_handlers
+
         original_client = project_handlers.github_client
         project_handlers.github_client = None
 
         try:
-            result = await update_project_handler({
-                "project_id": "PVT_kwDOBQfyVc0FoQ",
-                "title": "Test",
-            })
+            result = await update_project_handler(
+                {
+                    "project_id": "PVT_kwDOBQfyVc0FoQ",
+                    "title": "Test",
+                }
+            )
 
             assert result.isError
             assert "Error: GitHub client not initialized" in result.content[0].text
@@ -1080,13 +1089,18 @@ class TestUpdateProjectHandler:
             "github_project_manager_mcp.handlers.project_handlers.github_client",
             mock_client,
         ):
-            result = await update_project_handler({
-                "project_id": "PVT_kwDOBQfyVc0FoQ",
-                "title": "Test Title",
-            })
+            result = await update_project_handler(
+                {
+                    "project_id": "PVT_kwDOBQfyVc0FoQ",
+                    "title": "Test Title",
+                }
+            )
 
             assert result.isError
-            assert "Error updating project: API rate limit exceeded" in result.content[0].text
+            assert (
+                "Error updating project: API rate limit exceeded"
+                in result.content[0].text
+            )
 
     @pytest.mark.asyncio
     async def test_update_project_no_data_returned(self):
@@ -1100,13 +1114,18 @@ class TestUpdateProjectHandler:
             "github_project_manager_mcp.handlers.project_handlers.github_client",
             mock_client,
         ):
-            result = await update_project_handler({
-                "project_id": "PVT_kwDOBQfyVc0FoQ",
-                "title": "Test Title",
-            })
+            result = await update_project_handler(
+                {
+                    "project_id": "PVT_kwDOBQfyVc0FoQ",
+                    "title": "Test Title",
+                }
+            )
 
             assert result.isError
-            assert "Error: Failed to update project - no data returned" in result.content[0].text
+            assert (
+                "Error: Failed to update project - no data returned"
+                in result.content[0].text
+            )
 
     @pytest.mark.asyncio
     async def test_update_project_malformed_response(self):
@@ -1120,13 +1139,18 @@ class TestUpdateProjectHandler:
             "github_project_manager_mcp.handlers.project_handlers.github_client",
             mock_client,
         ):
-            result = await update_project_handler({
-                "project_id": "PVT_kwDOBQfyVc0FoQ",
-                "title": "Test Title",
-            })
+            result = await update_project_handler(
+                {
+                    "project_id": "PVT_kwDOBQfyVc0FoQ",
+                    "title": "Test Title",
+                }
+            )
 
             assert result.isError
-            assert "Error: Failed to update project - no data returned" in result.content[0].text
+            assert (
+                "Error: Failed to update project - no data returned"
+                in result.content[0].text
+            )
 
     @pytest.mark.asyncio
     async def test_update_project_with_special_characters(self):
@@ -1135,7 +1159,7 @@ class TestUpdateProjectHandler:
             "updateProjectV2": {
                 "projectV2": {
                     "id": "PVT_kwDOBQfyVc0FoQ",
-                    "title": "Project with \"quotes\" & symbols",
+                    "title": 'Project with "quotes" & symbols',
                     "shortDescription": "Description with <tags> & entities",
                     "readme": "# README with\n\n- Special chars: @#$%\n- Unicode: 🚀✨",
                     "public": True,
@@ -1153,30 +1177,32 @@ class TestUpdateProjectHandler:
             "github_project_manager_mcp.handlers.project_handlers.github_client",
             mock_client,
         ):
-            result = await update_project_handler({
-                "project_id": "PVT_kwDOBQfyVc0FoQ",
-                "title": "Project with \"quotes\" & symbols",
-                "short_description": "Description with <tags> & entities",
-                "readme": "# README with\n\n- Special chars: @#$%\n- Unicode: 🚀✨",
-                "public": True,
-            })
+            result = await update_project_handler(
+                {
+                    "project_id": "PVT_kwDOBQfyVc0FoQ",
+                    "title": 'Project with "quotes" & symbols',
+                    "short_description": "Description with <tags> & entities",
+                    "readme": "# README with\n\n- Special chars: @#$%\n- Unicode: 🚀✨",
+                    "public": True,
+                }
+            )
 
             assert not result.isError
             response_text = result.content[0].text
             assert "✅ Successfully updated project!" in response_text
-            assert "Project with \"quotes\" & symbols" in response_text
+            assert 'Project with "quotes" & symbols' in response_text
 
             # Verify proper escaping in GraphQL mutation
             mock_client.mutate.assert_called_once()
             mutation_call = mock_client.mutate.call_args[0][0]
             # Should properly escape quotes and special characters
-            assert r'\"quotes\"' in mutation_call or '"quotes"' in mutation_call
+            assert r"\"quotes\"" in mutation_call or '"quotes"' in mutation_call
 
     @pytest.mark.asyncio
     async def test_update_project_with_long_readme(self):
         """Test project update with long README content."""
         long_readme = "# Long README\n\n" + "This is a very long line. " * 100
-        
+
         mock_result = {
             "updateProjectV2": {
                 "projectV2": {
@@ -1199,11 +1225,16 @@ class TestUpdateProjectHandler:
             "github_project_manager_mcp.handlers.project_handlers.github_client",
             mock_client,
         ):
-            result = await update_project_handler({
-                "project_id": "PVT_kwDOBQfyVc0FoQ",
-                "readme": long_readme,
-            })
+            result = await update_project_handler(
+                {
+                    "project_id": "PVT_kwDOBQfyVc0FoQ",
+                    "readme": long_readme,
+                }
+            )
 
             assert not result.isError
             response_text = result.content[0].text
-            assert f"- **README:** Updated ({len(long_readme)} characters)" in response_text
+            assert (
+                f"- **README:** Updated ({len(long_readme)} characters)"
+                in response_text
+            )

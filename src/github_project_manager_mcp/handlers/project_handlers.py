@@ -747,8 +747,8 @@ async def update_project_handler(arguments: Dict[str, Any]) -> CallToolResult:
             return CallToolResult(
                 content=[
                     TextContent(
-                        type="text", 
-                        text="Error: At least one field to update must be provided (title, short_description, readme, or public)"
+                        type="text",
+                        text="Error: At least one field to update must be provided (title, short_description, readme, or public)",
                     )
                 ],
                 isError=True,
@@ -793,7 +793,9 @@ async def update_project_handler(arguments: Dict[str, Any]) -> CallToolResult:
 
             # Extract updated project information from the response
             updated_title = project_data.get("title", "Unknown")
-            updated_short_description = project_data.get("shortDescription", "No description")
+            updated_short_description = project_data.get(
+                "shortDescription", "No description"
+            )
             updated_readme = project_data.get("readme", "No README")
             updated_public = project_data.get("public", False)
             updated_at = project_data.get("updatedAt", "Unknown")
@@ -805,7 +807,9 @@ async def update_project_handler(arguments: Dict[str, Any]) -> CallToolResult:
             if short_description:
                 updates.append(f"- **Description:** {updated_short_description}")
             if readme:
-                updates.append(f"- **README:** Updated ({len(updated_readme)} characters)")
+                updates.append(
+                    f"- **README:** Updated ({len(updated_readme)} characters)"
+                )
             if public is not None:
                 visibility = "Public" if updated_public else "Private"
                 updates.append(f"- **Visibility:** {visibility}")

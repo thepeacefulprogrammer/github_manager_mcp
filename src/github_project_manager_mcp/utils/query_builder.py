@@ -331,7 +331,9 @@ mutation {{
         if title is not None:
             input_fields.append(f"title: {self._escape_string(title)}")
         if short_description is not None:
-            input_fields.append(f"shortDescription: {self._escape_string(short_description)}")
+            input_fields.append(
+                f"shortDescription: {self._escape_string(short_description)}"
+            )
         if readme is not None:
             input_fields.append(f"readme: {self._escape_string(readme)}")
         if public is not None:
@@ -447,3 +449,235 @@ mutation {{
 
         logger.debug(f"Built add item to project mutation: {project_id} + {content_id}")
         return mutation
+
+    def list_prds_in_project(
+        self,
+        project_id: str,
+        first: Optional[int] = None,
+        after: Optional[str] = None,
+    ) -> str:
+        """
+        Build a query to list PRDs (draft issues) in a project.
+
+        Args:
+            project_id: GitHub project ID
+            first: Number of items to fetch (pagination)
+            after: Cursor for pagination
+
+        Returns:
+            GraphQL query string
+
+        Raises:
+            ValueError: If project_id is empty or None
+        """
+        if not project_id:
+            raise ValueError("Project ID is required")
+
+        pagination_args = self._build_pagination_args(first, after)
+
+        pagination_info = ""
+        if first is not None or after is not None:
+            pagination_info = """
+        pageInfo {
+          hasNextPage
+          hasPreviousPage
+          startCursor
+          endCursor
+        }"""
+
+        query = f"""
+query {{
+  node(id: {self._escape_string(project_id)}) {{
+    ... on ProjectV2 {{
+      title
+      items{pagination_args} {{
+        totalCount{pagination_info}
+        nodes {{
+          id
+          createdAt
+          updatedAt
+          content {{
+            ... on DraftIssue {{
+              id
+              title
+              body
+              createdAt
+              updatedAt
+              assignees(first: 50) {{
+                totalCount
+                nodes {{
+                  login
+                  name
+                }}
+              }}
+            }}
+            ... on Issue {{
+              id
+              title
+              body
+              number
+              state
+              createdAt
+              updatedAt
+              assignees(first: 50) {{
+                totalCount
+                nodes {{
+                  login
+                  name
+                }}
+              }}
+              repository {{
+                name
+                owner {{
+                  login
+                }}
+              }}
+            }}
+          }}
+          fieldValues(first: 10) {{
+            nodes {{
+              ... on ProjectV2ItemFieldTextValue {{
+                text
+                field {{
+                  ... on ProjectV2Field {{
+                    name
+                  }}
+                }}
+              }}
+              ... on ProjectV2ItemFieldSingleSelectValue {{
+                name
+                field {{
+                  ... on ProjectV2SingleSelectField {{
+                    name
+                  }}
+                }}
+              }}
+            }}
+          }}
+        }}
+      }}
+    }}
+  }}
+}}
+""".strip()
+
+        logger.debug(f"Built list PRDs in project query for ID: {project_id}")
+        return query
+
+    def update_prd(
+        self,
+        prd_item_id: str,
+        title: Optional[str] = None,
+        body: Optional[str] = None,
+        assignee_ids: Optional[List[str]] = None,
+    ) -> str:
+        """
+        Build a mutation to update a PRD (Draft Issue) in a project.
+
+        Note: This method expects the draft issue content ID (not the project item ID).
+
+        Args:
+            prd_item_id: GitHub draft issue content ID
+            title: New title for the PRD
+            body: New body content for the PRD
+            assignee_ids: List of user IDs to assign to the PRD
+
+        Returns:
+            GraphQL mutation string to update the draft issue
+
+        Raises:
+            ValueError: If prd_item_id is empty or None, or no updates provided
+        """
+        if not prd_item_id:
+            raise ValueError("PRD item ID is required")
+
+        if not any([title is not None, body is not None, assignee_ids is not None]):
+            raise ValueError("At least one field must be provided for update")
+
+        # Build the input fields for the mutation
+        input_fields = [f"draftIssueId: {self._escape_string(prd_item_id)}"]
+
+        if title is not None:
+            input_fields.append(f"title: {self._escape_string(title)}")
+
+        if body is not None:
+            input_fields.append(f"body: {self._escape_string(body)}")
+
+        if assignee_ids is not None:
+            # Convert list of assignee IDs to GraphQL array format
+            assignee_list = (
+                "[" + ", ".join(self._escape_string(aid) for aid in assignee_ids) + "]"
+            )
+            input_fields.append(f"assigneeIds: {assignee_list}")
+
+        input_str = ", ".join(input_fields)
+
+        mutation = f"""
+mutation {{
+  updateProjectV2DraftIssue(input: {{
+    {input_str}
+  }}) {{
+    draftIssue {{
+      id
+      title
+      body
+      createdAt
+      updatedAt
+      assignees(first: 50) {{
+        totalCount
+        nodes {{
+          id
+          login
+          name
+        }}
+      }}
+      projectV2Items(first: 10) {{
+        totalCount
+        nodes {{
+          id
+          project {{
+            id
+            title
+          }}
+        }}
+      }}
+    }}
+  }}
+}}
+""".strip()
+
+        logger.debug(f"Built update PRD mutation for draft issue ID: {prd_item_id}")
+        return mutation
+
+    def get_prd_content_id(self, prd_item_id: str) -> str:
+        """
+        Build a query to get the draft issue content ID from a project item ID.
+
+        Args:
+            prd_item_id: GitHub project item ID (PVTI_...)
+
+        Returns:
+            GraphQL query string to get the content ID
+
+        Raises:
+            ValueError: If prd_item_id is empty or None
+        """
+        if not prd_item_id:
+            raise ValueError("PRD item ID is required")
+
+        query = f"""
+query {{
+  node(id: {self._escape_string(prd_item_id)}) {{
+    ... on ProjectV2Item {{
+      content {{
+        ... on DraftIssue {{
+          id
+        }}
+      }}
+    }}
+  }}
+}}
+""".strip()
+
+        logger.debug(f"Built get PRD content ID query for item ID: {prd_item_id}")
+        return query

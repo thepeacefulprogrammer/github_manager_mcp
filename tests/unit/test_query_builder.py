@@ -145,7 +145,7 @@ class TestProjectQueryBuilder:
 
         builder = ProjectQueryBuilder()
         mutation = builder.update_project(
-            "project123", title="Updated Title", description="New description"
+            "project123", title="Updated Title", short_description="New description"
         )
 
         assert "mutation" in mutation
