@@ -96,22 +96,23 @@ def _build_add_subtask_mutation(
 
     mutation = f"""
 mutation {{
-  addProjectV2DraftIssue(input: {{
-    projectId: {escaped_project_id}
-    title: {escaped_title}
-    body: {escaped_body}
-  }}) {{
-    projectItem {{
-      id
-      content {{
-        ... on DraftIssue {{
-          title
-          body
-          createdAt
+      addProjectV2DraftIssue(input: {{
+      projectId: {escaped_project_id}
+      title: {escaped_title}
+      body: {escaped_body}
+    }}) {{
+      projectItem {{
+        id
+        content {{
+          ... on DraftIssue {{
+            id
+            title
+            body
+            createdAt
+          }}
         }}
       }}
     }}
-  }}
 }}
 """.strip()
 
@@ -272,8 +273,9 @@ async def add_subtask_handler(arguments: Dict[str, Any]) -> CallToolResult:
             )
 
         # Extract subtask information
-        subtask_id = project_item.get("id")
         content = project_item.get("content", {})
+        subtask_id = content.get("id")  # Use draft issue ID, not project item ID
+        project_item_id = project_item.get("id")  # Keep project item ID for reference
         subtask_title = content.get("title", title)
         created_at = content.get("createdAt", "")
 
@@ -282,6 +284,7 @@ async def add_subtask_handler(arguments: Dict[str, Any]) -> CallToolResult:
 
 **Subtask Details:**
 - **ID:** {subtask_id}
+- **Project Item ID:** {project_item_id}
 - **Title:** {subtask_title}
 - **Parent Task:** {parent_task_id}
 - **Order:** {order}
@@ -739,11 +742,11 @@ def _build_update_subtask_mutation(
 
     mutation = f"""
 mutation {{
-  updateIssue(input: {{
-    id: {escaped_id}
+  updateProjectV2DraftIssue(input: {{
+    draftIssueId: {escaped_id}
     {input_str}
   }}) {{
-    issue {{
+    draftIssue {{
       id
       title
       body
@@ -858,21 +861,16 @@ async def update_subtask_handler(arguments: Dict[str, Any]) -> CallToolResult:
         get_content_query = f"""
 query {{
   node(id: "{subtask_item_id}") {{
-    id
-    ... on ProjectV2Item {{
-      content {{
-        ... on DraftIssue {{
-          title
-          body
-        }}
-      }}
+    ... on DraftIssue {{
+      title
+      body
     }}
   }}
 }}
 """.strip()
 
         try:
-            content_response = await client.query(get_content_query)
+            response = await client.query(get_content_query)
         except Exception as e:
             logger.error(f"Error retrieving subtask content: {e}")
             return CallToolResult(
@@ -886,11 +884,7 @@ query {{
             )
 
         # Validate content response
-        if (
-            not content_response
-            or "node" not in content_response
-            or not content_response["node"]
-        ):
+        if not response or not response.get("node"):
             return CallToolResult(
                 content=[
                     TextContent(
@@ -901,8 +895,8 @@ query {{
                 isError=True,
             )
 
-        node_data = content_response["node"]
-        if "content" not in node_data or not node_data["content"]:
+        node_data = response["node"]
+        if not node_data:
             return CallToolResult(
                 content=[
                     TextContent(
@@ -913,11 +907,10 @@ query {{
                 isError=True,
             )
 
-        current_content = node_data["content"]
-        current_title = current_content.get("title", "")
-        current_body = current_content.get("body", "")
+        current_title = node_data.get("title", "")
+        current_body = node_data.get("body", "")
 
-        # Validate that this is actually a subtask
+        # Validate this is actually a subtask
         try:
             metadata = _parse_subtask_metadata(current_body)
             if not metadata or metadata.get("type") != "Subtask":
@@ -997,8 +990,8 @@ query {{
             )
 
         # Extract updated subtask information
-        update_data = update_response.get("updateIssue", {})
-        issue_data = update_data.get("issue", {})
+        update_data = update_response.get("updateProjectV2DraftIssue", {})
+        issue_data = update_data.get("draftIssue", {})
 
         updated_metadata = _parse_subtask_metadata(updated_body)
 
@@ -1238,7 +1231,7 @@ def _build_get_subtask_content_query(subtask_item_id: str) -> str:
     Build GraphQL query to get subtask content by item ID.
 
     Args:
-        subtask_item_id: GitHub Projects v2 item ID of the subtask
+        subtask_item_id: GitHub DraftIssue ID of the subtask
 
     Returns:
         GraphQL query string
@@ -1249,17 +1242,9 @@ def _build_get_subtask_content_query(subtask_item_id: str) -> str:
     query = f"""
 query {{
   node(id: {escaped_item_id}) {{
-    ... on ProjectV2Item {{
-      content {{
-        ... on DraftIssue {{
-          title
-          body
-        }}
-        ... on Issue {{
-          title
-          body
-        }}
-      }}
+    ... on DraftIssue {{
+      title
+      body
     }}
   }}
 }}
@@ -1342,8 +1327,7 @@ async def complete_subtask_handler(arguments: Dict[str, Any]) -> CallToolResult:
 
         # Get content from response
         node = response["node"]
-        content = node.get("content")
-        if not content:
+        if not node:
             return CallToolResult(
                 content=[
                     TextContent(
@@ -1354,8 +1338,8 @@ async def complete_subtask_handler(arguments: Dict[str, Any]) -> CallToolResult:
                 isError=True,
             )
 
-        current_title = content.get("title", "")
-        current_body = content.get("body", "")
+        current_title = node.get("title", "")
+        current_body = node.get("body", "")
 
         # Validate this is actually a subtask by checking metadata
         metadata = _parse_subtask_metadata(current_body)
@@ -1424,7 +1408,7 @@ async def complete_subtask_handler(arguments: Dict[str, Any]) -> CallToolResult:
             )
 
         # Parse update response
-        update_data = update_response.get("updateIssue", {})
+        update_data = update_response.get("updateProjectV2DraftIssue", {})
         if not update_data:
             return CallToolResult(
                 content=[
@@ -1436,7 +1420,7 @@ async def complete_subtask_handler(arguments: Dict[str, Any]) -> CallToolResult:
                 isError=True,
             )
 
-        updated_issue = update_data.get("issue", {})
+        updated_issue = update_data.get("draftIssue", {})
         updated_title = updated_issue.get("title", current_title)
 
         # Build success response

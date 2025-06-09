@@ -700,14 +700,20 @@ class TestUpdateSubtaskHandler:
         """Test successful subtask update with all fields."""
         mock_client = AsyncMock()
 
-        # Mock the issue content retrieval
+        # Mock successful query response for current content
         mock_content_response = {
             "node": {
-                "id": "PVTI_test123",
-                "content": {
-                    "title": "Old Subtask Title",
-                    "body": "Old description\n\n## Subtask Metadata\n- **Type:** Subtask\n- **Parent Task ID:** PVTI_parent123\n- **Order:** 1\n- **Status:** Incomplete",
-                },
+                "title": "Original Subtask Title",
+                "body": """Original description
+
+## Subtask Metadata
+- **Type:** Subtask
+- **Parent Task ID:** PVTI_parent123
+- **Order:** 1
+- **Status:** Incomplete
+
+---
+*This subtask was created via GitHub Project Manager MCP*""",
             }
         }
 
@@ -751,11 +757,8 @@ class TestUpdateSubtaskHandler:
 
         mock_content_response = {
             "node": {
-                "id": "PVTI_test123",
-                "content": {
-                    "title": "Original Title",
-                    "body": "Original description\n\n## Subtask Metadata\n- **Type:** Subtask\n- **Parent Task ID:** PVTI_parent123\n- **Order:** 1\n- **Status:** Incomplete",
-                },
+                "title": "Original Title",
+                "body": "Original description\n\n## Subtask Metadata\n- **Type:** Subtask\n- **Parent Task ID:** PVTI_parent123\n- **Order:** 1\n- **Status:** Incomplete",
             }
         }
 
@@ -794,11 +797,8 @@ class TestUpdateSubtaskHandler:
 
         mock_content_response = {
             "node": {
-                "id": "PVTI_test123",
-                "content": {
-                    "title": "Test Subtask",
-                    "body": "Description\n\n## Subtask Metadata\n- **Type:** Subtask\n- **Parent Task ID:** PVTI_parent123\n- **Order:** 1\n- **Status:** Incomplete",
-                },
+                "title": "Test Subtask",
+                "body": "Description\n\n## Subtask Metadata\n- **Type:** Subtask\n- **Parent Task ID:** PVTI_parent123\n- **Order:** 1\n- **Status:** Incomplete",
             }
         }
 
@@ -965,11 +965,8 @@ class TestUpdateSubtaskHandler:
         mock_client = AsyncMock()
         mock_content_response = {
             "node": {
-                "id": "PVTI_test123",
-                "content": {
-                    "title": "Test Subtask",
-                    "body": "Invalid body without metadata",
-                },
+                "title": "Test Subtask",
+                "body": "Invalid body without metadata",
             }
         }
         mock_client.query.return_value = mock_content_response
@@ -1015,11 +1012,8 @@ class TestUpdateSubtaskHandler:
 
         mock_content_response = {
             "node": {
-                "id": "PVTI_test123",
-                "content": {
-                    "title": "Original Title",
-                    "body": "Description\n\n## Subtask Metadata\n- **Type:** Subtask\n- **Parent Task ID:** PVTI_parent123\n- **Order:** 1\n- **Status:** Incomplete",
-                },
+                "title": "Original Title",
+                "body": "Description\n\n## Subtask Metadata\n- **Type:** Subtask\n- **Parent Task ID:** PVTI_parent123\n- **Order:** 1\n- **Status:** Incomplete",
             }
         }
 
@@ -1047,11 +1041,8 @@ class TestUpdateSubtaskHandler:
 
         mock_content_response = {
             "node": {
-                "id": "PVTI_test123",
-                "content": {
-                    "title": "Original Title",
-                    "body": "Description\n\n## Subtask Metadata\n- **Type:** Subtask\n- **Parent Task ID:** PVTI_parent123\n- **Order:** 1\n- **Status:** Incomplete",
-                },
+                "title": "Original Title",
+                "body": "Description\n\n## Subtask Metadata\n- **Type:** Subtask\n- **Parent Task ID:** PVTI_parent123\n- **Order:** 1\n- **Status:** Incomplete",
             }
         }
 
@@ -1079,11 +1070,8 @@ class TestUpdateSubtaskHandler:
 
         mock_content_response = {
             "node": {
-                "id": "PVTI_test123",
-                "content": {
-                    "title": "Original Title",
-                    "body": "Description\n\n## Subtask Metadata\n- **Type:** Subtask\n- **Parent Task ID:** PVTI_parent123\n- **Order:** 1\n- **Status:** Incomplete",
-                },
+                "title": "Original Title",
+                "body": "Description\n\n## Subtask Metadata\n- **Type:** Subtask\n- **Parent Task ID:** PVTI_parent123\n- **Order:** 1\n- **Status:** Incomplete",
             }
         }
 
@@ -1347,12 +1335,11 @@ class TestCompleteSubtaskHandler:
         """Test successful subtask completion."""
         mock_client = AsyncMock()
 
-        # Mock successful query response for getting subtask content
+        # Mock successful query response
         mock_query_response = {
             "node": {
-                "content": {
-                    "title": "Test Subtask",
-                    "body": """Test subtask description
+                "title": "Test Subtask",
+                "body": """Test subtask description
 
 ## Subtask Metadata
 - **Type:** Subtask
@@ -1362,14 +1349,13 @@ class TestCompleteSubtaskHandler:
 
 ---
 *This subtask was created via GitHub Project Manager MCP*""",
-                }
             }
         }
 
         # Mock successful update response
         mock_update_response = {
-            "updateIssue": {
-                "issue": {
+            "updateProjectV2DraftIssue": {
+                "draftIssue": {
                     "id": "PVTI_test123",
                     "title": "Test Subtask",
                     "body": """Test subtask description
@@ -1413,9 +1399,8 @@ class TestCompleteSubtaskHandler:
         # Mock response with already complete subtask
         mock_query_response = {
             "node": {
-                "content": {
-                    "title": "Already Complete Subtask",
-                    "body": """Test subtask description
+                "title": "Already Complete Subtask",
+                "body": """Test subtask description
 
 ## Subtask Metadata
 - **Type:** Subtask
@@ -1425,7 +1410,6 @@ class TestCompleteSubtaskHandler:
 
 ---
 *This subtask was created via GitHub Project Manager MCP*""",
-                }
             }
         }
 
@@ -1507,10 +1491,8 @@ class TestCompleteSubtaskHandler:
         mock_client = AsyncMock()
         mock_response = {
             "node": {
-                "content": {
-                    "title": "Invalid Subtask",
-                    "body": "This is not a valid subtask format",
-                }
+                "title": "Invalid Subtask",
+                "body": "This is not a valid subtask format",
             }
         }
         mock_client.query.return_value = mock_response
@@ -1558,9 +1540,8 @@ class TestCompleteSubtaskHandler:
         # Mock successful query response
         mock_query_response = {
             "node": {
-                "content": {
-                    "title": "Test Subtask",
-                    "body": """Test subtask description
+                "title": "Test Subtask",
+                "body": """Test subtask description
 
 ## Subtask Metadata
 - **Type:** Subtask
@@ -1570,7 +1551,6 @@ class TestCompleteSubtaskHandler:
 
 ---
 *This subtask was created via GitHub Project Manager MCP*""",
-                }
             }
         }
 
@@ -1601,9 +1581,8 @@ class TestCompleteSubtaskHandler:
         # Mock successful query response
         mock_query_response = {
             "node": {
-                "content": {
-                    "title": "Test Subtask",
-                    "body": """Test subtask description
+                "title": "Test Subtask",
+                "body": """Test subtask description
 
 ## Subtask Metadata
 - **Type:** Subtask
@@ -1613,7 +1592,6 @@ class TestCompleteSubtaskHandler:
 
 ---
 *This subtask was created via GitHub Project Manager MCP*""",
-                }
             }
         }
 
@@ -1644,9 +1622,8 @@ class TestCompleteSubtaskHandler:
         # Mock successful query response
         mock_query_response = {
             "node": {
-                "content": {
-                    "title": "Test Subtask",
-                    "body": """Test subtask description
+                "title": "Test Subtask",
+                "body": """Test subtask description
 
 ## Subtask Metadata
 - **Type:** Subtask
@@ -1656,7 +1633,6 @@ class TestCompleteSubtaskHandler:
 
 ---
 *This subtask was created via GitHub Project Manager MCP*""",
-                }
             }
         }
 
