@@ -2,7 +2,7 @@
 
 - `src/github_project_manager_mcp/__init__.py` - Main package initialization and version info
 
-- `src/github_project_manager_mcp/mcp_server_fastmcp.py` - FastMCP-based server implementation for proper Cursor IDE integration with comprehensive debugging, async patterns, and complete project management tools (test_connection, create_project, list_projects, delete_project, get_project_details, update_project, list_prds_in_project, add_prd_to_project, update_prd, update_prd_status, delete_prd_from_project, create_task, list_tasks, update_task, delete_task) - **17 TOOLS IMPLEMENTED, 18 TOOLS PLANNED**
+- `src/github_project_manager_mcp/mcp_server_fastmcp.py` - FastMCP-based server implementation for proper Cursor IDE integration with comprehensive debugging, async patterns, and complete project management tools (test_connection, create_project, list_projects, delete_project, get_project_details, update_project, list_prds_in_project, add_prd_to_project, update_prd, update_prd_status, delete_prd_from_project, create_task, list_tasks, update_task, delete_task, add_subtask) - **16 TOOLS IMPLEMENTED, 18 TOOLS PLANNED**
 
 - `src/github_project_manager_mcp/github_client.py` - GitHub GraphQL API client with async support and error handling
 - `tests/unit/test_github_client.py` - Unit tests for GitHub API client with TDD approach
@@ -13,7 +13,7 @@
 - `src/github_project_manager_mcp/handlers/prd_handlers.test.py` - Unit tests for PRD handlers
 - `src/github_project_manager_mcp/handlers/task_handlers.py` - MCP tool handlers for task management operations including create_task with parent PRD association, list_tasks with PRD filtering, update_task with comprehensive status and field updates, and delete_task with safety confirmation requirements - **COMPLETE TASK CRUD OPERATIONS** ✅ld management, parameter validation, task metadata management (priority, estimated hours), pagination support, and structured task description formatting with GitHub Projects v2 API integration
 - `tests/unit/handlers/test_task_handlers.py` - Unit tests for task handlers with comprehensive TDD test coverage for create_task, list_tasks, update_task, and delete_task functionality including validation, error handling, pagination, filtering, field updates, API integration, and safety confirmation requirements (42 total tests)
-- `src/github_project_manager_mcp/handlers/subtask_handlers.py` - MCP tool handlers for subtask management operations
+- `src/github_project_manager_mcp/handlers/subtask_handlers.py` - MCP tool handlers for subtask management operations including add_subtask with comprehensive parameter validation, GitHub Projects v2 API integration, and task association
 - `src/github_project_manager_mcp/handlers/subtask_handlers.test.py` - Unit tests for subtask handlers
 - `src/github_project_manager_mcp/handlers/status_column_handlers.py` - MCP tool handlers for status column (single select field) management operations including create_status_column, list_status_columns, update_status_column, delete_status_column, and get_status_column with comprehensive GitHub Projects v2 API integration
 - `tests/unit/handlers/test_status_column_handlers.py` - Unit tests for status column handlers with comprehensive TDD test coverage for all status column functionality including validation, error handling, and API integration (19 total tests)
@@ -80,7 +80,7 @@
 
 **CURRENT FOCUS**: **HIERARCHICAL CRUD COMPLETION STATUS**
 
-📊 **CRUD OPERATIONS STATUS ANALYSIS** (Overall: 80% Complete)
+📊 **CRUD OPERATIONS STATUS ANALYSIS** (Overall: 85% Complete)
 
 🏢 **PROJECT LEVEL: 100% COMPLETE** ✅
 - ✅ Create: `create_project` | ✅ Read: `list_projects`, `get_project_details`
@@ -94,11 +94,12 @@
 - ✅ Create: `create_task` | ✅ Read: `list_tasks` | ✅ Update: `update_task`
 - ✅ Delete: `delete_task` - **JUST COMPLETED** 🎉
 
-☑️ **SUBTASK LEVEL: 20% COMPLETE** ⚠️
+☑️ **SUBTASK LEVEL: 60% COMPLETE** 🚀
 - ✅ Data Model: `Subtask` class implemented (Task 4.9 ✅)
-- ❌ Create: `add_subtask` (Task 4.10 - Next up!)
-- ❌ Read: `list_subtasks` (Task 4.11 - Planned)
-- ❌ **GAPS**: `update_subtask`, `delete_subtask` - **MISSING FROM ROADMAP**
+- ✅ Create: `add_subtask` (Task 4.10 ✅)
+- ✅ Read: `list_subtasks` (Task 4.11 ✅ - **JUST COMPLETED!**)
+- ❌ Update: `update_subtask` (Task 4.12 - Next up!)
+- ❌ Delete: `delete_subtask` (Task 4.13 - **NOW IN ROADMAP** ✅)
 
 **DEVELOPMENT STRATEGY**: **HIERARCHICAL CRUD COMPLETION**
 Following a systematic approach to ensure solid foundations:
@@ -109,8 +110,8 @@ Following a systematic approach to ensure solid foundations:
 5. 🔄 **Implement Status Management & Workflow Automation**
 
 **IMMEDIATE PRIORITIES**:
-1. 🎯 **Task 4.10**: Implement `add_subtask` MCP tool handler (Next up!)
-2. 📋 **Missing Operations**: Add `update_subtask`, `delete_subtask` to roadmap
+1. 🎯 **Task 4.12**: Implement `update_subtask` MCP tool handler (Next up!)
+2. ✅ **Roadmap Updated**: Added `update_subtask` (4.12), `delete_subtask` (4.13)
 3. 🚀 **Goal**: Achieve 100% CRUD coverage across all hierarchy levels
 
 ## Tasks
@@ -192,14 +193,14 @@ Following a systematic approach to ensure solid foundations:
   - [x] 4.8 Implement update_task MCP tool handler for status and detail management - **FULLY WORKING AND TESTED**
   - [x] 4.9 Create Subtask data model with checklist item structure
   - [x] 4.9.1 **NEW**: Implement delete_task MCP tool handler for task cleanup operations
-  - [ ] 4.10 Implement add_subtask MCP tool handler with task association
-  - [ ] 4.11 Implement list_subtasks MCP tool handler for task-specific queries
-  - [ ] 4.12 Implement complete_subtask MCP tool handler with completion tracking
-  - [ ] 4.12.1 **NEW**: Implement update_subtask MCP tool handler for subtask content and status updates
-  - [ ] 4.12.2 **NEW**: Implement delete_subtask MCP tool handler for subtask cleanup operations
-  - [ ] 4.13 Create hierarchical relationship management between PRDs, tasks, and subtasks
-  - [ ] 4.14 Add validation logic for all PRD, task, and subtask operations
-  - [ ] 4.15 Create comprehensive unit tests for PRD, task, and subtask functionality
+  - [x] 4.10 Implement add_subtask MCP tool handler with task association
+  - [x] 4.11 Implement list_subtasks MCP tool handler for task-specific queries
+  - [ ] 4.12 Implement update_subtask MCP tool handler for subtask content and status updates
+  - [ ] 4.13 Implement delete_subtask MCP tool handler for subtask cleanup operations
+  - [ ] 4.14 Implement complete_subtask MCP tool handler with completion tracking
+  - [ ] 4.15 Create hierarchical relationship management between PRDs, tasks, and subtasks
+  - [ ] 4.16 Add validation logic for all PRD, task, and subtask operations
+  - [ ] 4.17 Create comprehensive unit tests for PRD, task, and subtask functionality
 
 - [ ] 5.0 Create Status Management and Workflow Automation
   - [ ] 5.1 Implement status column definitions (Backlog, This Sprint, Up Next, In Progress, Done)
@@ -266,6 +267,66 @@ Following a systematic approach to ensure solid foundations:
 - **Test Suite:** ✅ All 292 tests passing
 
 The `update_task` functionality is fully operational and ready for production use!
+
+## ✅ Task 4.11: Implement `list_subtasks` MCP Tool Handler [x]
+
+### 4.11.1: Write comprehensive unit tests for the `list_subtasks` handler [x]
+- **Status:** ✅ COMPLETED
+- **File:** `tests/unit/handlers/test_subtask_handlers.py`
+- **Details:** Added 13 comprehensive test cases for `TestListSubtasksHandler` covering:
+  - Success scenarios with parent task filtering and all subtasks listing
+  - Empty result handling and pagination support
+  - Input validation (missing/empty project_id, invalid pagination parameters)
+  - Error handling (GitHub client not initialized, GraphQL errors, API exceptions)
+  - Edge cases and response format validation
+
+### 4.11.2: Extend the ProjectQueryBuilder with subtask listing methods [x]
+- **Status:** ✅ COMPLETED
+- **File:** `src/github_project_manager_mcp/utils/query_builder.py`
+- **Details:** Added `list_subtasks_in_project()` method to ProjectQueryBuilder:
+  - Support for optional parent task filtering
+  - Pagination with first/after parameters
+  - GraphQL query construction for project items with draft issue content
+  - Comprehensive logging and validation
+
+### 4.11.3: Implement the `list_subtasks_handler()` function [x]
+- **Status:** ✅ COMPLETED
+- **File:** `src/github_project_manager_mcp/handlers/subtask_handlers.py`
+- **Details:** Implemented comprehensive `list_subtasks_handler()` function with:
+  - Parameter validation for project_id and optional pagination
+  - Subtask filtering by metadata markers in body content
+  - Parent task ID filtering when specified
+  - Rich formatting with subtask details, order, parent task, and descriptions
+  - Comprehensive error handling and response validation
+
+### 4.11.4: Add filtering and formatting helper functions [x]
+- **Status:** ✅ COMPLETED
+- **File:** `src/github_project_manager_mcp/handlers/subtask_handlers.py`
+- **Details:** Added helper functions:
+  - `_filter_subtasks_by_parent()`: Filters items by subtask metadata markers and parent task ID
+  - `_format_subtask_list_response()`: Formats comprehensive subtask listing with metadata extraction
+  - Support for description truncation, order display, and pagination info
+
+### 4.11.5: Register the `list_subtasks` tool in the MCP server [x]
+- **Status:** ✅ COMPLETED
+- **File:** `src/github_project_manager_mcp/mcp_server_fastmcp.py`
+- **Details:** Successfully registered the `list_subtasks` tool with:
+  - Complete parameter schema (project_id, parent_task_id, first, after)
+  - Proper type definitions and descriptions
+  - Integration with FastMCP server
+  - All tests passing (347 total tests, 13 new list_subtasks tests)
+
+## ✅ Live Testing Results:
+- **Tool Registration:** ✅ `list_subtasks` tool successfully appears in tool list
+- **Basic Listing:** ✅ Successfully lists all subtasks in project
+- **Parent Filtering:** ✅ Filters subtasks by parent task ID correctly
+- **Pagination:** ✅ Supports pagination with first/after parameters
+- **Metadata Display:** ✅ Shows parent task, order, creation dates, and descriptions
+- **Error Handling:** ✅ Proper validation for missing parameters and invalid data
+- **Test Suite:** ✅ All 13 new tests passing, no existing functionality broken
+
+### Summary
+Task 4.11 is **COMPLETED** ✅. The list_subtasks MCP tool handler provides comprehensive subtask listing capabilities for GitHub Projects v2, including optional parent task filtering, pagination support, and rich metadata display. The implementation follows TDD methodology and includes robust error handling and validation, bringing subtask CRUD operations to 60% completion.
 
 ### Summary
 Task 4.8 is **COMPLETED** ✅. The update_task MCP tool handler provides comprehensive task update capabilities for GitHub Projects v2, including content updates, status management, priority changes, and time tracking. The implementation follows TDD methodology and includes robust error handling and validation.

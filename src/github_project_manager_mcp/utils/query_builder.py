@@ -1021,13 +1021,13 @@ mutation {{
 
     def get_task_content_id(self, task_item_id: str) -> str:
         """
-        Build a query to get the draft issue content ID from a task project item ID.
+        Build a query to get the content ID for a task item.
 
         Args:
-            task_item_id: GitHub project item ID (PVTI_...)
+            task_item_id: GitHub project item ID for the task
 
         Returns:
-            GraphQL query string to get the content ID
+            GraphQL query string
 
         Raises:
             ValueError: If task_item_id is empty or None
@@ -1043,11 +1043,82 @@ query {{
         ... on DraftIssue {{
           id
         }}
+        ... on Issue {{
+          id
+        }}
       }}
     }}
   }}
 }}
 """.strip()
 
-        logger.debug(f"Built get Task content ID query for item ID: {task_item_id}")
+        logger.debug(f"Built get task content ID query for item: {task_item_id}")
+        return query
+
+    def list_subtasks_in_project(
+        self,
+        project_id: str,
+        parent_task_id: Optional[str] = None,
+        first: Optional[int] = None,
+        after: Optional[str] = None,
+    ) -> str:
+        """
+        Build a query to list subtasks in a project, optionally filtered by parent task.
+
+        Args:
+            project_id: GitHub project ID
+            parent_task_id: Optional parent task ID to filter by
+            first: Number of subtasks to fetch (pagination)
+            after: Cursor for pagination
+
+        Returns:
+            GraphQL query string
+
+        Raises:
+            ValueError: If project_id is empty or None
+        """
+        if not project_id:
+            raise ValueError("Project ID is required")
+
+        pagination_args = self._build_pagination_args(first, after)
+
+        pagination_info = ""
+        if first is not None or after is not None:
+            pagination_info = """
+        pageInfo {
+          hasNextPage
+          hasPreviousPage
+          startCursor
+          endCursor
+        }"""
+
+        query = f"""
+query {{
+  node(id: {self._escape_string(project_id)}) {{
+    ... on ProjectV2 {{
+      items{pagination_args} {{
+        totalCount{pagination_info}
+        nodes {{
+          id
+          createdAt
+          updatedAt
+          content {{
+            ... on DraftIssue {{
+              id
+              title
+              body
+              createdAt
+              updatedAt
+            }}
+          }}
+        }}
+      }}
+    }}
+  }}
+}}
+""".strip()
+
+        logger.debug(f"Built list subtasks query for project: {project_id}")
+        if parent_task_id:
+            logger.debug(f"Filtering by parent task: {parent_task_id}")
         return query

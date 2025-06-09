@@ -28,7 +28,7 @@ class TestCreateTaskHandler:
     async def test_create_task_success(self):
         """Test successful task creation."""
         mock_client = AsyncMock()
-        mock_client.execute_query.return_value = {
+        mock_client.mutate.return_value = {
             "addProjectV2DraftIssue": {
                 "projectItem": {
                     "id": "PVTI_task123",

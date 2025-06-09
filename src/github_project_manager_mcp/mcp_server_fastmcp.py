@@ -137,6 +137,21 @@ except ImportError as e:
     sys.exit(1)
 
 try:
+    from github_project_manager_mcp.handlers.subtask_handlers import add_subtask_handler
+    from github_project_manager_mcp.handlers.subtask_handlers import (
+        initialize_github_client as initialize_subtask_github_client,
+    )
+    from github_project_manager_mcp.handlers.subtask_handlers import (
+        list_subtasks_handler,
+    )
+
+    logger.info("Successfully imported subtask handlers")
+except ImportError as e:
+    logger.error(f"Failed to import subtask handlers: {e}")
+    logger.error(f"Traceback: {traceback.format_exc()}")
+    sys.exit(1)
+
+try:
     from github_project_manager_mcp.utils.auth import load_github_token
 
     logger.info("Successfully imported auth utils")
@@ -266,8 +281,9 @@ class GitHubProjectManagerMCPFastServer:
                 initialize_github_client(github_token)
                 initialize_prd_github_client(github_token)
                 initialize_task_github_client(github_token)
+                initialize_subtask_github_client(github_token)
                 logger.info(
-                    "GitHub client initialized successfully for project, PRD, and task handlers"
+                    "GitHub client initialized successfully for project, PRD, task, and subtask handlers"
                 )
             else:
                 logger.warning("GitHub client not initialized - no token available")
@@ -882,8 +898,94 @@ class GitHubProjectManagerMCPFastServer:
                     f'{{"success": false, "error": "Failed to delete task: {str(e)}"}}'
                 )
 
+        # Add subtask tool
+        @self.mcp.tool()
+        async def add_subtask(
+            project_id: str,
+            parent_task_id: str,
+            title: str,
+            description: str = "",
+            order: int = 1,
+        ) -> str:
+            """Create a new subtask and associate it with a parent Task in a GitHub project. Subtasks represent specific work items within a larger Task."""
+            logger.info(
+                f"Add subtask called: project_id={project_id}, parent_task_id={parent_task_id}, title={title}, description={description}, order={order}"
+            )
+
+            try:
+                await self._ensure_async_initialized()
+
+                if not self.github_client:
+                    return '{"success": false, "error": "GitHub client not initialized - check token configuration"}'
+
+                # Call the existing add subtask handler
+                args = {
+                    "project_id": project_id,
+                    "parent_task_id": parent_task_id,
+                    "title": title,
+                    "description": description,
+                    "order": order,
+                }
+
+                result = await add_subtask_handler(args)
+                logger.info(f"Add subtask result: {result}")
+
+                # Extract text content from CallToolResult
+                if hasattr(result, "content") and result.content:
+                    return result.content[0].text
+                else:
+                    return str(result)
+
+            except Exception as e:
+                logger.error(f"Error in add_subtask: {e}")
+                logger.error(f"Traceback: {traceback.format_exc()}")
+                return (
+                    f'{{"success": false, "error": "Failed to add subtask: {str(e)}"}}'
+                )
+
+        @self.mcp.tool()
+        async def list_subtasks(
+            project_id: str,
+            parent_task_id: str = None,
+            first: int = 25,
+            after: str = None,
+        ) -> str:
+            """List subtasks in a GitHub project with optional filtering by parent task. Supports pagination and returns detailed information about each subtask including status, parent task, and metadata."""
+            logger.info(
+                f"List subtasks called: project_id={project_id}, parent_task_id={parent_task_id}, first={first}, after={after}"
+            )
+
+            try:
+                await self._ensure_async_initialized()
+
+                if not self.github_client:
+                    return '{"success": false, "error": "GitHub client not initialized - check token configuration"}'
+
+                # Call the existing list subtasks handler
+                args = {
+                    "project_id": project_id,
+                    "parent_task_id": parent_task_id,
+                    "first": first,
+                    "after": after,
+                }
+
+                result = await list_subtasks_handler(args)
+                logger.info(f"List subtasks result: {result}")
+
+                # Extract text content from CallToolResult
+                if hasattr(result, "content") and result.content:
+                    return result.content[0].text
+                else:
+                    return str(result)
+
+            except Exception as e:
+                logger.error(f"Error in list_subtasks: {e}")
+                logger.error(f"Traceback: {traceback.format_exc()}")
+                return f'{{"success": false, "error": "Failed to list subtasks: {str(e)}"}}'
+
+        # Log the total number of tools registered
         logger.info(
-            f"Registered {len([test_connection, create_project, list_projects, update_project, delete_project, get_project_details, list_prds_in_project, update_prd, add_prd_to_project, delete_prd_from_project, update_prd_status, create_task, list_tasks, update_task, delete_task])} MCP tools"
+            f"Successfully registered {len(self.mcp.tools)} MCP tools with FastMCP"
         )
 
 
