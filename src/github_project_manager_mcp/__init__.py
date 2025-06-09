@@ -20,12 +20,9 @@ __title__ = "github-project-manager-mcp"
 __license__ = "MIT"
 __copyright__ = "2024, GitHub Project Manager MCP"
 
-# Import main components when they're available
-try:
-    from .server import main
-except ImportError:
-    # Server module not yet implemented
-    main = None
+# FastMCP server is the main implementation (mcp_server_fastmcp.py)
+# Legacy server.py has been removed for simplicity
+main = None
 
 __all__: List[str] = [
     "__version__",

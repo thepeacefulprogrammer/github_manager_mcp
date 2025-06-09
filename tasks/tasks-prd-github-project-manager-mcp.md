@@ -1,14 +1,15 @@
 ## Relevant Files
 
 - `src/github_project_manager_mcp/__init__.py` - Main package initialization and version info
-- `src/github_project_manager_mcp/server.py` - Core MCP server implementation with tool registration, GitHub authentication, and MCP protocol compliance
+
 - `src/github_project_manager_mcp/mcp_server_fastmcp.py` - FastMCP-based server implementation for proper Cursor IDE integration with comprehensive debugging, async patterns, and complete project management tools (test_connection, create_project, list_projects, delete_project, get_project_details)
-- `tests/unit/test_server.py` - Unit tests for MCP server functionality with comprehensive TDD test coverage
+
 - `src/github_project_manager_mcp/github_client.py` - GitHub GraphQL API client with async support and error handling
 - `tests/unit/test_github_client.py` - Unit tests for GitHub API client with TDD approach
 - `src/github_project_manager_mcp/handlers/project_handlers.py` - MCP tool handlers for project management operations including create_project, list_projects, delete_project, and get_project_details with repository validation, pagination support, GitHub API integration, safe deletion with confirmation, and detailed project information retrieval
 - `tests/unit/handlers/test_project_handlers.py` - Unit tests for project handlers with comprehensive TDD test coverage for create_project, list_projects, delete_project, and get_project_details functionality
-- `src/github_project_manager_mcp/handlers/prd_handlers.py` - MCP tool handlers for PRD management operations
+- `src/github_project_manager_mcp/handlers/prd_handlers.py` - MCP tool handlers for PRD management operations including add_prd_to_project with comprehensive PRD creation, structured descriptions, status/priority validation, and GitHub Projects v2 draft issue integration
+- `tests/unit/handlers/test_prd_handlers.py` - Unit tests for PRD handlers with comprehensive TDD test coverage for add_prd_to_project functionality including validation, error handling, and API integration
 - `src/github_project_manager_mcp/handlers/prd_handlers.test.py` - Unit tests for PRD handlers
 - `src/github_project_manager_mcp/handlers/task_handlers.py` - MCP tool handlers for task management operations
 - `src/github_project_manager_mcp/handlers/task_handlers.test.py` - Unit tests for task handlers
@@ -16,7 +17,8 @@
 - `src/github_project_manager_mcp/handlers/subtask_handlers.test.py` - Unit tests for subtask handlers
 - `src/github_project_manager_mcp/models/project.py` - Data models for project entities including Project, ProjectField, and related classes for GitHub Projects v2 API
 - `tests/unit/test_project_model.py` - Unit tests for Project data models with comprehensive TDD test coverage
-- `src/github_project_manager_mcp/models/prd.py` - Data models for PRD entities
+- `src/github_project_manager_mcp/models/prd.py` - Data models for PRD entities including PRD, PRDStatus, and PRDPriority classes for GitHub Projects v2 integration with comprehensive field mapping and validation
+- `tests/unit/test_prd_model.py` - Unit tests for PRD data models with comprehensive TDD test coverage for all PRD functionality including validation, serialization, and GitHub item mapping
 - `src/github_project_manager_mcp/models/task.py` - Data models for task entities
 - `src/github_project_manager_mcp/models/subtask.py` - Data models for subtask entities
 - `src/github_project_manager_mcp/models/__init__.py` - Models package initialization with Project model exports
@@ -62,10 +64,12 @@
 - ✅ `create_project` - **SUCCESSFULLY CREATED REAL GITHUB PROJECT** (MCP Test Project: PVT_kwHOAGo2TM4A7C1T)
 - ✅ `delete_project` - **IMPLEMENTED WITH SAFETY CHECKS** (requires explicit confirmation, prevents accidental deletions)
 - ✅ `get_project_details` - **COMPREHENSIVE PROJECT INFORMATION RETRIEVAL** (detailed project metadata, descriptions, and status)
+- ✅ `add_prd_to_project` - **FULLY FUNCTIONAL WITH COMPREHENSIVE PRD CREATION** (creates draft issues with structured descriptions, acceptance criteria, technical requirements, business value)
+- ✅ `delete_prd_from_project` - **FULLY FUNCTIONAL PRD CLEANUP TOOL** (safely deletes PRDs from projects with confirmation, proper GraphQL API integration)
 - ✅ GitHub Authentication - Working with .env token
 - ✅ GraphQL API - Successfully calling GitHub Projects v2 API
 
-**NEXT TASK**: Implement `archive_project` (section 3.7) for project lifecycle management or move to status column management (section 3.8).
+**NEXT TASK**: Continue implementing PRD management tools (section 4.3: list_prds) or move to task management functionality.
 
 ## Tasks
 
@@ -127,8 +131,9 @@
   - [ ] 3.12 Add integration tests for project CRUD operations with GitHub API
 
 - [ ] 4.0 Implement PRD and Task Management
-  - [ ] 4.1 Create PRD data model with custom fields for GitHub Projects v2 items
-  - [ ] 4.2 Implement add_prd_to_project MCP tool handler with title, description, and status
+  - [x] 4.1 Create PRD data model with custom fields for GitHub Projects v2 items
+  - [x] 4.2 Implement add_prd_to_project MCP tool handler with title, description, and status - **FULLY WORKING AND TESTED**
+  - [x] 4.2.1 Implement delete_prd_from_project MCP tool handler for cleanup operations - **FULLY WORKING AND TESTED**
   - [ ] 4.3 Implement list_prds MCP tool handler with project filtering
   - [ ] 4.4 Implement update_prd_status MCP tool handler for status and detail updates
   - [ ] 4.5 Create Task data model with relationship to parent PRD

@@ -97,6 +97,19 @@ except ImportError as e:
     sys.exit(1)
 
 try:
+    from github_project_manager_mcp.handlers.prd_handlers import (
+        add_prd_to_project_handler,
+        delete_prd_from_project_handler,
+        initialize_github_client as initialize_prd_github_client,
+    )
+
+    logger.info("Successfully imported PRD handlers")
+except ImportError as e:
+    logger.error(f"Failed to import PRD handlers: {e}")
+    logger.error(f"Traceback: {traceback.format_exc()}")
+    sys.exit(1)
+
+try:
     from github_project_manager_mcp.utils.auth import load_github_token
 
     logger.info("Successfully imported auth utils")
@@ -224,7 +237,8 @@ class GitHubProjectManagerMCPFastServer:
                 )
                 # Also initialize the global client for handlers
                 initialize_github_client(github_token)
-                logger.info("GitHub client initialized successfully")
+                initialize_prd_github_client(github_token)
+                logger.info("GitHub client initialized successfully for project and PRD handlers")
             else:
                 logger.warning("GitHub client not initialized - no token available")
 
@@ -389,8 +403,97 @@ class GitHubProjectManagerMCPFastServer:
                 logger.error(f"Traceback: {traceback.format_exc()}")
                 return f'{{"success": false, "error": "Failed to get project details: {str(e)}"}}'
 
+        # Add PRD to project tool
+        @self.mcp.tool()
+        async def add_prd_to_project(
+            project_id: str,
+            title: str,
+            description: str = "",
+            acceptance_criteria: str = "",
+            technical_requirements: str = "", 
+            business_value: str = "",
+            status: str = "Backlog",
+            priority: str = "Medium"
+        ) -> str:
+            """Add a new Product Requirements Document (PRD) to a GitHub project as a draft issue with comprehensive metadata including acceptance criteria, technical requirements, and business value."""
+            logger.info(
+                f"Add PRD to project called: project_id={project_id}, title={title}, status={status}, priority={priority}"
+            )
+
+            try:
+                await self._ensure_async_initialized()
+
+                if not self.github_client:
+                    return '{"success": false, "error": "GitHub client not initialized - check token configuration"}'
+
+                # Call the existing add PRD to project handler
+                args = {
+                    "project_id": project_id,
+                    "title": title,
+                    "description": description,
+                    "status": status,
+                    "priority": priority,
+                }
+                
+                # Add optional fields if provided
+                if acceptance_criteria:
+                    args["acceptance_criteria"] = acceptance_criteria
+                if technical_requirements:
+                    args["technical_requirements"] = technical_requirements
+                if business_value:
+                    args["business_value"] = business_value
+
+                result = await add_prd_to_project_handler(args)
+                logger.info(f"Add PRD to project result: {result}")
+
+                # Extract text content from CallToolResult
+                if hasattr(result, "content") and result.content:
+                    return result.content[0].text
+                else:
+                    return str(result)
+
+            except Exception as e:
+                logger.error(f"Error in add_prd_to_project: {e}")
+                logger.error(f"Traceback: {traceback.format_exc()}")
+                return f'{{"success": false, "error": "Failed to add PRD to project: {str(e)}"}}'
+
+        # Delete PRD from project tool
+        @self.mcp.tool()
+        async def delete_prd_from_project(project_id: str, project_item_id: str, confirm: bool) -> str:
+            """Delete a Product Requirements Document (PRD) from a GitHub project. This action is permanent and cannot be undone."""
+            logger.info(
+                f"Delete PRD from project called: project_id={project_id}, project_item_id={project_item_id}, confirm={confirm}"
+            )
+
+            try:
+                await self._ensure_async_initialized()
+
+                if not self.github_client:
+                    return '{"success": false, "error": "GitHub client not initialized - check token configuration"}'
+
+                # Call the existing delete PRD from project handler
+                args = {
+                    "project_id": project_id,
+                    "project_item_id": project_item_id,
+                    "confirm": confirm,
+                }
+
+                result = await delete_prd_from_project_handler(args)
+                logger.info(f"Delete PRD from project result: {result}")
+
+                # Extract text content from CallToolResult
+                if hasattr(result, "content") and result.content:
+                    return result.content[0].text
+                else:
+                    return str(result)
+
+            except Exception as e:
+                logger.error(f"Error in delete_prd_from_project: {e}")
+                logger.error(f"Traceback: {traceback.format_exc()}")
+                return f'{{"success": false, "error": "Failed to delete PRD from project: {str(e)}"}}'
+
         logger.info(
-            f"Registered {len([test_connection, create_project, list_projects, delete_project, get_project_details])} MCP tools"
+            f"Registered {len([test_connection, create_project, list_projects, delete_project, get_project_details, add_prd_to_project, delete_prd_from_project])} MCP tools"
         )
 
 

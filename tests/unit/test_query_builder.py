@@ -134,7 +134,8 @@ class TestProjectQueryBuilder:
         assert "ownerId" in mutation
         assert "title" in mutation
         assert "My New Project" in mutation
-        assert "Project description" in mutation
+        # Note: GitHub's CreateProjectV2 API doesn't support description in input
+        # Description would need to be set via updateProjectV2 mutation later
 
     def test_build_update_project_mutation(self):
         """Test building update project mutation."""
@@ -237,6 +238,7 @@ class TestProjectQueryBuilder:
         query = builder.list_projects("testuser")
 
         # Should include essential fields by default
-        essential_fields = ["id", "title", "description", "url", "createdAt"]
+        # Note: GitHub Projects v2 uses "shortDescription" not "description"
+        essential_fields = ["id", "title", "shortDescription", "url", "createdAt"]
         for field in essential_fields:
             assert field in query
