@@ -5,8 +5,7 @@ This module provides comprehensive test coverage for PRD management
 operations in GitHub Projects v2.
 """
 
-from typing import Any, Dict
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, patch
 
 import pytest
 
@@ -85,11 +84,11 @@ class TestAddPRDToProjectTool:
                             "nodes": [
                                 {
                                     "field": {"name": "Status"},
-                                    "singleSelectOption": {"name": "In Progress"},
+                                    "name": "In Progress",
                                 },
                                 {
                                     "field": {"name": "Priority"},
-                                    "singleSelectOption": {"name": "High"},
+                                    "name": "High",
                                 },
                             ]
                         },
@@ -292,11 +291,11 @@ class TestAddPRDToProjectTool:
                             "nodes": [
                                 {
                                     "field": {"name": "Status"},
-                                    "singleSelectOption": {"name": "This Sprint"},
+                                    "name": "This Sprint",
                                 },
                                 {
                                     "field": {"name": "Priority"},
-                                    "singleSelectOption": {"name": "Critical"},
+                                    "name": "Critical",
                                 },
                             ]
                         },
@@ -1761,7 +1760,7 @@ class TestCompletePrdHandler:
                         {
                             "field": {"name": "Status"},
                             "optionId": "OPT_IN_PROGRESS",
-                            "singleSelectOption": {"name": "In Progress"},
+                            "name": "In Progress",
                         }
                     ]
                 },
@@ -1778,7 +1777,7 @@ class TestCompletePrdHandler:
                             {
                                 "field": {"name": "Status"},
                                 "optionId": "OPT_DONE",
-                                "singleSelectOption": {"name": "Done"},
+                                "name": "Done",
                             }
                         ]
                     },
@@ -1838,7 +1837,7 @@ class TestCompletePrdHandler:
                         {
                             "field": {"name": "Status"},
                             "optionId": "OPT_DONE",
-                            "singleSelectOption": {"name": "Done"},
+                            "name": "Done",
                         }
                     ]
                 },
@@ -2032,7 +2031,7 @@ class TestCompletePrdHandler:
                         {
                             "field": {"name": "Status"},
                             "optionId": "OPT_IN_PROGRESS",
-                            "singleSelectOption": {"name": "In Progress"},
+                            "name": "In Progress",
                         }
                     ]
                 },
@@ -2093,7 +2092,7 @@ class TestCompletePrdHandler:
                         {
                             "field": {"name": "Status"},
                             "optionId": "OPT_IN_PROGRESS",
-                            "singleSelectOption": {"name": "In Progress"},
+                            "name": "In Progress",
                         }
                     ]
                 },
@@ -2154,7 +2153,7 @@ class TestCompletePrdHandler:
                         {
                             "field": {"name": "Status"},
                             "optionId": "OPT_IN_PROGRESS",
-                            "singleSelectOption": {"name": "In Progress"},
+                            "name": "In Progress",
                         }
                     ]
                 },

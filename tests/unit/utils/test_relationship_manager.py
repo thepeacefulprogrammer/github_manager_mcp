@@ -5,10 +5,11 @@ This module tests the hierarchical relationship management functionality
 between PRDs, Tasks, and Subtasks in GitHub Projects v2.
 """
 
-import pytest
-from unittest.mock import AsyncMock, MagicMock, patch
 from dataclasses import dataclass
-from typing import Dict, List, Any
+from typing import Any, Dict, List
+from unittest.mock import AsyncMock, MagicMock, patch
+
+import pytest
 
 from github_project_manager_mcp.utils.relationship_manager import (
     RelationshipManager,

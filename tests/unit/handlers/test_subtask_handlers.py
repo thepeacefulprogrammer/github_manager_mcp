@@ -13,10 +13,10 @@ from mcp.types import CallToolResult, TextContent
 
 from src.github_project_manager_mcp.handlers.subtask_handlers import (
     add_subtask_handler,
+    complete_subtask_handler,
     delete_subtask_handler,
     list_subtasks_handler,
     update_subtask_handler,
-    complete_subtask_handler,
 )
 
 

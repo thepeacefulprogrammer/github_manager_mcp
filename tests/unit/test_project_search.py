@@ -10,13 +10,15 @@ Tests comprehensive search capabilities including:
 - Search result ranking and relevance
 """
 
-import pytest
-from unittest.mock import Mock, AsyncMock, patch
 from datetime import datetime, timezone
+from unittest.mock import AsyncMock, Mock, patch
+
+import pytest
+
 from src.github_project_manager_mcp.utils.project_search import (
     ProjectSearchFilter,
-    ProjectSearchResult,
     ProjectSearchManager,
+    ProjectSearchResult,
 )
 
 

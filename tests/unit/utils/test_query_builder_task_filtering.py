@@ -6,6 +6,7 @@ and ensuring efficient querying when filtering by parent PRD.
 """
 
 import pytest
+
 from github_project_manager_mcp.utils.query_builder import ProjectQueryBuilder
 
 

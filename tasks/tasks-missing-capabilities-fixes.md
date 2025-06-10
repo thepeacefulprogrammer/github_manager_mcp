@@ -16,8 +16,15 @@ Based on testing results, the GitHub Manager MCP server is 85% functional with t
 - `tests/unit/handlers/test_task_handlers_parameter_processing.py` - NEW: Comprehensive tests for parameter processing, validation, and edge cases
 - `tests/unit/handlers/test_task_prd_association_filtering.py` - NEW: Comprehensive unit tests for task-PRD association filtering across all scenarios
 - `tests/unit/utils/test_query_builder_task_filtering.py` - NEW: Tests for GraphQL query structure and optimization behavior
-- `src/github_project_manager_mcp/handlers/prd_handlers.py` - Contains the `complete_prd` handler with GraphQL query issues
-- `tests/unit/handlers/test_prd_handlers.py` - Unit tests for PRD handlers that need GraphQL query fix validation
+- `src/github_project_manager_mcp/handlers/prd_handlers.py` - Fixed GraphQL query structure for PRD completion functionality
+- `src/github_project_manager_mcp/handlers/task_handlers.py` - Fixed similar GraphQL field access issues in task completion
+- `src/github_project_manager_mcp/models/prd.py` - Updated field value parsing to handle correct API structure
+- `src/github_project_manager_mcp/models/task.py` - Updated field value parsing to handle correct API structure
+- `tests/unit/handlers/test_prd_handlers.py` - Updated unit tests with correct API response mock structure
+- `tests/unit/handlers/test_task_handlers.py` - Updated unit tests with correct API response mock structure
+- `tests/unit/test_prd_model.py` - Updated model tests with correct field structure
+- `tests/unit/test_task_model.py` - Updated model tests with correct field structure
+- `tests/unit/handlers/test_prd_complete_graphql_fix.py` - NEW: Comprehensive tests for GraphQL query structure fixes
 - `src/github_project_manager_mcp/mcp_server_fastmcp.py` - Main MCP server that contains search project handlers
 - `src/github_project_manager_mcp/github_client.py` - GitHub client that may need initialization fixes for search functionality
 - `tests/unit/test_github_client.py` - Unit tests for GitHub client initialization issues
@@ -39,13 +46,13 @@ Based on testing results, the GitHub Manager MCP server is 85% functional with t
   - [x] 1.4 Write unit tests to verify task-PRD association filtering works correctly
   - [x] 1.5 Test the fix with real GitHub API calls to ensure proper task listing by PRD
 
-- [ ] 2.0 Fix PRD Completion GraphQL Query Structure
-  - [ ] 2.1 Analyze the GraphQL error "Field 'singleSelectOption' doesn't exist on type 'ProjectV2ItemFieldSingleSelectValue'"
-  - [ ] 2.2 Research the correct GraphQL schema for GitHub Projects v2 single select field values
-  - [ ] 2.3 Update the GraphQL query in `complete_prd` handler to use correct field structure
-  - [ ] 2.4 Fix the field value update mutation for PRD status changes
-  - [ ] 2.5 Write unit tests to verify PRD completion works without GraphQL errors
-  - [ ] 2.6 Test PRD completion with real GitHub API calls to ensure proper status updates
+- [x] 2.0 Fix PRD Completion GraphQL Query Structure
+  - [x] 2.1 Analyze the GraphQL error "Field 'singleSelectOption' doesn't exist on type 'ProjectV2ItemFieldSingleSelectValue'"
+  - [x] 2.2 Research the correct GraphQL schema for GitHub Projects v2 single select field values
+  - [x] 2.3 Update the GraphQL query in `complete_prd` handler to use correct field structure
+  - [x] 2.4 Fix the field value update mutation for PRD status changes
+  - [x] 2.5 Write unit tests to verify PRD completion works without GraphQL errors
+  - [x] 2.6 Test PRD completion with real GitHub API calls to ensure proper status updates
 
 - [ ] 3.0 Fix Search Functionality GitHub Client Initialization
   - [ ] 3.1 Debug the "GitHub client not initialized" error in search_projects handler

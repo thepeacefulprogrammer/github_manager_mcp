@@ -5,8 +5,9 @@ This test file focuses on verifying that the task-PRD association filtering
 works correctly across all scenarios, including edge cases and real-world usage patterns.
 """
 
-import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
+
+import pytest
 
 from github_project_manager_mcp.handlers.task_handlers import list_tasks_handler
 

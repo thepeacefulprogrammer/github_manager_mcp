@@ -182,17 +182,17 @@ class TestTask:
                 "nodes": [
                     {
                         "field": {"name": "Status"},
-                        "singleSelectOption": {"name": "In Progress"},
+                        "name": "In Progress",
                     },
                     {
                         "field": {"name": "Priority"},
-                        "singleSelectOption": {"name": "High"},
+                        "name": "High",
                     },
                     {"field": {"name": "Parent PRD"}, "text": "PVTI_prd456"},
                     {"field": {"name": "Estimated Hours"}, "number": 8},
                     {
                         "field": {"name": "Complexity"},
-                        "singleSelectOption": {"name": "Medium"},
+                        "name": "Medium",
                     },
                 ]
             },
@@ -231,7 +231,7 @@ class TestTask:
                     {"field": {"name": "Parent PRD"}, "text": "PVTI_prd789"},
                     {
                         "field": {"name": "Status"},
-                        "singleSelectOption": {"name": "Todo"},
+                        "name": "Todo",
                     },
                 ]
             },

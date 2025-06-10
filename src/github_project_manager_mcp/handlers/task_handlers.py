@@ -1487,7 +1487,7 @@ async def complete_task_handler(arguments: Dict[str, Any]) -> CallToolResult:
         for field_value in field_values:
             field = field_value.get("field", {})
             if field.get("name") == "Status":
-                current_status = field_value.get("singleSelectOption", {}).get("name")
+                current_status = field_value.get("name")
                 break
 
         if "Status" not in available_fields:

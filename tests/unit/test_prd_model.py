@@ -218,11 +218,11 @@ class TestPRDFromGitHubItem:
                 "nodes": [
                     {
                         "field": {"name": "Status"},
-                        "singleSelectOption": {"name": "In Progress"},
+                        "name": "In Progress",
                     },
                     {
                         "field": {"name": "Priority"},
-                        "singleSelectOption": {"name": "High"},
+                        "name": "High",
                     },
                     {"field": {"name": "Estimation"}, "text": "3 days"},
                 ]
@@ -277,7 +277,7 @@ class TestPRDFromGitHubItem:
                 "nodes": [
                     {
                         "field": {"name": "Status"},
-                        "singleSelectOption": {"name": "Invalid Status"},
+                        "name": "Invalid Status",
                     }
                 ]
             },
@@ -298,7 +298,7 @@ class TestPRDFromGitHubItem:
                 "nodes": [
                     {
                         "field": {"name": "Priority"},
-                        "singleSelectOption": {"name": "Invalid Priority"},
+                        "name": "Invalid Priority",
                     }
                 ]
             },

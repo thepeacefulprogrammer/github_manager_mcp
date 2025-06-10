@@ -132,9 +132,16 @@ class PRD:
                 value = field_value["number"]
             elif "date" in field_value:
                 value = field_value["date"]
-            elif "singleSelectOption" in field_value:
-                # For status and priority fields
-                option_name = field_value.get("singleSelectOption", {}).get("name", "")
+            elif "name" in field_value or "singleSelectOption" in field_value:
+                # For status and priority fields (handle both API structures)
+                if "name" in field_value:
+                    # Correct API structure
+                    option_name = field_value.get("name", "")
+                else:
+                    # Legacy structure for backward compatibility
+                    option_name = field_value.get("singleSelectOption", {}).get(
+                        "name", ""
+                    )
                 value = option_name
 
                 if field_name in ["status", "state"]:

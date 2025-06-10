@@ -1470,9 +1470,7 @@ query {{
               }}
             }}
             optionId
-            singleSelectOption {{
-              name
-            }}
+            name
           }}
         }}
       }}
@@ -1537,7 +1535,7 @@ query {{
         current_status = None
         for field_value in current_field_values:
             if field_value.get("field", {}).get("name") == "Status":
-                current_status = field_value.get("singleSelectOption", {}).get("name")
+                current_status = field_value.get("name")
                 break
 
         # Check if already complete
@@ -1592,9 +1590,7 @@ mutation {{
               }}
             }}
             optionId
-            singleSelectOption {{
-              name
-            }}
+            name
           }}
         }}
       }}

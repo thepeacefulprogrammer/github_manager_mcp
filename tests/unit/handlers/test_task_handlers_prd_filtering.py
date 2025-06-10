@@ -5,8 +5,9 @@ This test file specifically focuses on the PRD filtering issue identified
 during testing where list_tasks with parent_prd_id returns no results.
 """
 
-import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
+
+import pytest
 
 from github_project_manager_mcp.handlers.task_handlers import list_tasks_handler
 

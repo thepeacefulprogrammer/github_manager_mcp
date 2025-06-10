@@ -8,12 +8,14 @@ Tests comprehensive validation for project operations including:
 - Project metadata validation
 """
 
+from unittest.mock import AsyncMock, Mock
+
 import pytest
-from unittest.mock import Mock, AsyncMock
+
 from src.github_project_manager_mcp.utils.validation import (
-    ValidationResult,
-    ValidationError,
     ProjectValidator,
+    ValidationError,
+    ValidationResult,
 )
 
 

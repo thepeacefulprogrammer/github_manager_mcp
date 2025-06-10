@@ -15,10 +15,10 @@ from mcp.types import CallToolResult, TextContent
 from src.github_project_manager_mcp.handlers.task_handlers import (
     TASK_TOOL_HANDLERS,
     TASK_TOOLS,
+    complete_task_handler,
     create_task_handler,
     get_github_client,
     list_tasks_handler,
-    complete_task_handler,
 )
 
 
@@ -111,7 +111,7 @@ class TestListTasksHandler:
                                         },
                                         {
                                             "field": {"name": "Priority"},
-                                            "singleSelectOption": {"name": "High"},
+                                            "name": "High",
                                         },
                                     ]
                                 },
@@ -1266,7 +1266,7 @@ class TestCompleteTaskHandler:
                         {
                             "field": {"name": "Status"},
                             "optionId": "OPT_IN_PROGRESS",
-                            "singleSelectOption": {"name": "In Progress"},
+                            "name": "In Progress",
                         }
                     ]
                 },
@@ -1332,7 +1332,7 @@ class TestCompleteTaskHandler:
                         {
                             "field": {"name": "Status"},
                             "optionId": "OPT_DONE",
-                            "singleSelectOption": {"name": "Done"},
+                            "name": "Done",
                         }
                     ]
                 },
@@ -1505,7 +1505,7 @@ class TestCompleteTaskHandler:
                         {
                             "field": {"name": "Status"},
                             "optionId": "OPT_IN_PROGRESS",
-                            "singleSelectOption": {"name": "In Progress"},
+                            "name": "In Progress",
                         }
                     ]
                 },
@@ -1562,7 +1562,7 @@ class TestCompleteTaskHandler:
                         {
                             "field": {"name": "Status"},
                             "optionId": "OPT_IN_PROGRESS",
-                            "singleSelectOption": {"name": "In Progress"},
+                            "name": "In Progress",
                         }
                     ]
                 },
@@ -1619,7 +1619,7 @@ class TestCompleteTaskHandler:
                         {
                             "field": {"name": "Status"},
                             "optionId": "OPT_IN_PROGRESS",
-                            "singleSelectOption": {"name": "In Progress"},
+                            "name": "In Progress",
                         }
                     ]
                 },
