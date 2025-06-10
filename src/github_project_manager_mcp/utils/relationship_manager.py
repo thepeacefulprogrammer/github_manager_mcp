@@ -1647,9 +1647,10 @@ class RelationshipManager:
                                         warnings=warnings,
                                         metadata=metadata,
                                     )
-            except Exception:
+            except Exception as e:
                 # If status check fails, continue with normal flow
-                pass
+                logger.warning(f"Task completion status check failed: {str(e)}")
+                warnings.append(f"Status check failed but continuing: {str(e)}")
 
             # Get all subtasks for this task
             subtasks = await self.get_task_children(project_id, task_item_id)
@@ -1923,9 +1924,14 @@ class RelationshipManager:
                                         "reason": "All subtasks complete",
                                     }
                                 )
-                        except Exception:
+                        except Exception as e:
                             # If task completion check fails, still record the attempt
-                            pass
+                            logger.warning(
+                                f"Parent task completion check failed: {str(e)}"
+                            )
+                            warnings.append(
+                                f"Parent task completion check failed: {str(e)}"
+                            )
 
             elif item_type.lower() == "task":
                 # Find parent PRD and check if it should be completed
@@ -1976,9 +1982,14 @@ class RelationshipManager:
                                         "reason": "All tasks complete",
                                     }
                                 )
-                        except Exception:
+                        except Exception as e:
                             # If PRD completion check fails, still record the attempt
-                            pass
+                            logger.warning(
+                                f"Parent PRD completion check failed: {str(e)}"
+                            )
+                            warnings.append(
+                                f"Parent PRD completion check failed: {str(e)}"
+                            )
 
             return RelationshipValidationResult(
                 is_valid=True, errors=errors, warnings=warnings, metadata=metadata
