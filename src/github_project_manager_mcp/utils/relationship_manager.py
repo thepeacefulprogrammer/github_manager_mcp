@@ -3009,7 +3009,7 @@ class RelationshipManager:
             rec_stack = set()
 
             def has_cycle(node_id, path):
-                nonlocal cycles_detected, detected_cycles
+                nonlocal cycles_detected
                 if node_id in rec_stack:
                     # Found a cycle
                     cycle_start = path.index(node_id)
