@@ -90,3 +90,21 @@ repos:
         types: [python]
         pass_filenames: false
         always_run: true
+      - id: commit-enforcement
+        name: commit-enforcement
+        entry: |
+          bash -c "
+          echo '✅ Pre-commit hooks completed successfully!' &&
+          echo '📋 COMMIT RULE REMINDER:' &&
+          echo '   • NEVER use --no-verify to bypass hooks' &&
+          echo '   • ALWAYS let pre-commit hooks run and fix issues' &&
+          echo '   • If hooks fail, fix the issues before committing' &&
+          echo '   • This prevents CI failures and maintains code quality' &&
+          echo '   • Use SKIP=hook-name only for known issues (document why)' &&
+          echo '' &&
+          echo '🚀 Ready to commit! All quality checks passed.'
+          "
+        language: system
+        stages: [pre-commit]
+        pass_filenames: false
+        always_run: true

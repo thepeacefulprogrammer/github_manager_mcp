@@ -193,6 +193,16 @@ response = client.call("add_prd_to_project", {
    flake8 .
    ```
 
+6. **⚠️ Important: Follow Commit Rules**
+   ```bash
+   # Read the commit rules first
+   cat COMMIT_RULES.md
+
+   # NEVER bypass pre-commit hooks
+   git commit -m "your message"  # ✅ Correct
+   # git commit --no-verify      # ❌ FORBIDDEN
+   ```
+
 ### Project Structure
 
 ```
