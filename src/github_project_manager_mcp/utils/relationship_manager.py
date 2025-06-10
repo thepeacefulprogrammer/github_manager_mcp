@@ -6,8 +6,8 @@ between PRDs, Tasks, and Subtasks in GitHub Projects v2.
 """
 
 import logging
-from typing import Dict, List, Optional, Set, Tuple, Any
 from dataclasses import dataclass
+from typing import Any, Dict, List, Optional, Set, Tuple
 
 logger = logging.getLogger(__name__)
 
