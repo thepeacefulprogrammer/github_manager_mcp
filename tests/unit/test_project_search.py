@@ -162,34 +162,32 @@ class TestProjectSearchManager:
     @pytest.mark.asyncio
     async def test_search_projects_by_query_success(self):
         """Test successful project search by query."""
-        # Mock response from GitHub API
+        # Mock response from GitHub API (already unwrapped by GitHub client)
         mock_response = {
-            "data": {
-                "viewer": {
-                    "projectsV2": {
-                        "totalCount": 2,
-                        "pageInfo": {"hasNextPage": False, "endCursor": "cursor123"},
-                        "nodes": [
-                            {
-                                "id": "PVT_kwDOBQfyVc0Fo",
-                                "title": "Test Project 1",
-                                "shortDescription": "A test project for search",
-                                "public": True,
-                                "createdAt": "2024-01-15T10:00:00Z",
-                                "updatedAt": "2024-01-20T15:30:00Z",
-                                "owner": {"login": "octocat"},
-                            },
-                            {
-                                "id": "PVT_kwDOBQfyVc0FoR",
-                                "title": "Test Project 2",
-                                "shortDescription": "Another test project",
-                                "public": False,
-                                "createdAt": "2024-01-10T08:00:00Z",
-                                "updatedAt": "2024-01-18T12:00:00Z",
-                                "owner": {"login": "octocat"},
-                            },
-                        ],
-                    }
+            "viewer": {
+                "projectsV2": {
+                    "totalCount": 2,
+                    "pageInfo": {"hasNextPage": False, "endCursor": "cursor123"},
+                    "nodes": [
+                        {
+                            "id": "PVT_kwDOBQfyVc0Fo",
+                            "title": "Test Project 1",
+                            "shortDescription": "A test project for search",
+                            "public": True,
+                            "createdAt": "2024-01-15T10:00:00Z",
+                            "updatedAt": "2024-01-20T15:30:00Z",
+                            "owner": {"login": "octocat"},
+                        },
+                        {
+                            "id": "PVT_kwDOBQfyVc0FoR",
+                            "title": "Test Project 2",
+                            "shortDescription": "Another test project",
+                            "public": False,
+                            "createdAt": "2024-01-10T08:00:00Z",
+                            "updatedAt": "2024-01-18T12:00:00Z",
+                            "owner": {"login": "octocat"},
+                        },
+                    ],
                 }
             }
         }
@@ -210,23 +208,21 @@ class TestProjectSearchManager:
     async def test_search_projects_with_visibility_filter(self):
         """Test project search with visibility filter."""
         mock_response = {
-            "data": {
-                "viewer": {
-                    "projectsV2": {
-                        "totalCount": 1,
-                        "pageInfo": {"hasNextPage": False, "endCursor": None},
-                        "nodes": [
-                            {
-                                "id": "PVT_kwDOBQfyVc0FoQ",
-                                "title": "Public Project",
-                                "shortDescription": "A public project",
-                                "public": True,
-                                "createdAt": "2024-01-15T10:00:00Z",
-                                "updatedAt": "2024-01-20T15:30:00Z",
-                                "owner": {"login": "octocat"},
-                            }
-                        ],
-                    }
+            "viewer": {
+                "projectsV2": {
+                    "totalCount": 1,
+                    "pageInfo": {"hasNextPage": False, "endCursor": None},
+                    "nodes": [
+                        {
+                            "id": "PVT_kwDOBQfyVc0FoQ",
+                            "title": "Public Project",
+                            "shortDescription": "A public project",
+                            "public": True,
+                            "createdAt": "2024-01-15T10:00:00Z",
+                            "updatedAt": "2024-01-20T15:30:00Z",
+                            "owner": {"login": "octocat"},
+                        }
+                    ],
                 }
             }
         }
@@ -246,23 +242,21 @@ class TestProjectSearchManager:
     async def test_search_projects_with_date_range_filter(self):
         """Test project search with date range filter."""
         mock_response = {
-            "data": {
-                "viewer": {
-                    "projectsV2": {
-                        "totalCount": 1,
-                        "pageInfo": {"hasNextPage": False, "endCursor": None},
-                        "nodes": [
-                            {
-                                "id": "PVT_kwDOBQfyVc0FoQ",
-                                "title": "Recent Project",
-                                "shortDescription": "A recently created project",
-                                "public": True,
-                                "createdAt": "2024-01-15T10:00:00Z",
-                                "updatedAt": "2024-01-20T15:30:00Z",
-                                "owner": {"login": "octocat"},
-                            }
-                        ],
-                    }
+            "viewer": {
+                "projectsV2": {
+                    "totalCount": 1,
+                    "pageInfo": {"hasNextPage": False, "endCursor": None},
+                    "nodes": [
+                        {
+                            "id": "PVT_kwDOBQfyVc0FoQ",
+                            "title": "Recent Project",
+                            "shortDescription": "A recently created project",
+                            "public": True,
+                            "createdAt": "2024-01-15T10:00:00Z",
+                            "updatedAt": "2024-01-20T15:30:00Z",
+                            "owner": {"login": "octocat"},
+                        }
+                    ],
                 }
             }
         }
@@ -282,23 +276,21 @@ class TestProjectSearchManager:
     async def test_search_projects_with_owner_filter(self):
         """Test project search with owner filter."""
         mock_response = {
-            "data": {
-                "user": {
-                    "projectsV2": {
-                        "totalCount": 1,
-                        "pageInfo": {"hasNextPage": False, "endCursor": None},
-                        "nodes": [
-                            {
-                                "id": "PVT_kwDOBQfyVc0FoQ",
-                                "title": "Owner Project",
-                                "shortDescription": "A project by specific owner",
-                                "public": True,
-                                "createdAt": "2024-01-15T10:00:00Z",
-                                "updatedAt": "2024-01-20T15:30:00Z",
-                                "owner": {"login": "specific-user"},
-                            }
-                        ],
-                    }
+            "user": {
+                "projectsV2": {
+                    "totalCount": 1,
+                    "pageInfo": {"hasNextPage": False, "endCursor": None},
+                    "nodes": [
+                        {
+                            "id": "PVT_kwDOBQfyVc0FoQ",
+                            "title": "Owner Project",
+                            "shortDescription": "A project by specific owner",
+                            "public": True,
+                            "createdAt": "2024-01-15T10:00:00Z",
+                            "updatedAt": "2024-01-20T15:30:00Z",
+                            "owner": {"login": "specific-user"},
+                        }
+                    ],
                 }
             }
         }
@@ -318,23 +310,21 @@ class TestProjectSearchManager:
     async def test_search_projects_with_combined_filters(self):
         """Test project search with multiple combined filters."""
         mock_response = {
-            "data": {
-                "user": {
-                    "projectsV2": {
-                        "totalCount": 1,
-                        "pageInfo": {"hasNextPage": True, "endCursor": "cursor123"},
-                        "nodes": [
-                            {
-                                "id": "PVT_kwDOBQfyVc0FoQ",
-                                "title": "Advanced Test Project",
-                                "shortDescription": "A complex test case",
-                                "public": False,
-                                "createdAt": "2024-01-15T10:00:00Z",
-                                "updatedAt": "2024-01-20T15:30:00Z",
-                                "owner": {"login": "test-user"},
-                            }
-                        ],
-                    }
+            "user": {
+                "projectsV2": {
+                    "totalCount": 1,
+                    "pageInfo": {"hasNextPage": True, "endCursor": "cursor123"},
+                    "nodes": [
+                        {
+                            "id": "PVT_kwDOBQfyVc0FoQ",
+                            "title": "Advanced Test Project",
+                            "shortDescription": "A complex test case",
+                            "public": False,
+                            "createdAt": "2024-01-15T10:00:00Z",
+                            "updatedAt": "2024-01-20T15:30:00Z",
+                            "owner": {"login": "test-user"},
+                        }
+                    ],
                 }
             }
         }
@@ -364,13 +354,11 @@ class TestProjectSearchManager:
     async def test_search_projects_empty_results(self):
         """Test project search with no matching results."""
         mock_response = {
-            "data": {
-                "viewer": {
-                    "projectsV2": {
-                        "totalCount": 0,
-                        "pageInfo": {"hasNextPage": False, "endCursor": None},
-                        "nodes": [],
-                    }
+            "viewer": {
+                "projectsV2": {
+                    "totalCount": 0,
+                    "pageInfo": {"hasNextPage": False, "endCursor": None},
+                    "nodes": [],
                 }
             }
         }

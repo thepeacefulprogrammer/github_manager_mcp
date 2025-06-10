@@ -135,17 +135,20 @@ class ProjectSearchManager:
             # Execute search
             response = await self.github_client.query(graphql_query)
 
+            # Debug logging
+            logger.debug(f"GraphQL response: {response}")
+
             # Handle errors
             if "errors" in response:
                 error_messages = [error["message"] for error in response["errors"]]
                 raise Exception(f"GraphQL errors: {'; '.join(error_messages)}")
 
-            # Extract search results
+            # Extract search results - GitHub client already unwraps the "data" field
             # Handle both user and viewer query formats
-            if "user" in response["data"] and response["data"]["user"]:
-                projects_data = response["data"]["user"]["projectsV2"]
-            elif "viewer" in response["data"]:
-                projects_data = response["data"]["viewer"]["projectsV2"]
+            if "user" in response and response["user"]:
+                projects_data = response["user"]["projectsV2"]
+            elif "viewer" in response:
+                projects_data = response["viewer"]["projectsV2"]
             else:
                 projects_data = {
                     "nodes": [],
@@ -280,7 +283,12 @@ class ProjectSearchManager:
                             createdAt
                             updatedAt
                             owner {{
-                                login
+                                ... on User {{
+                                    login
+                                }}
+                                ... on Organization {{
+                                    login
+                                }}
                             }}
                         }}
                     }}
@@ -309,7 +317,12 @@ class ProjectSearchManager:
                             createdAt
                             updatedAt
                             owner {{
-                                login
+                                ... on User {{
+                                    login
+                                }}
+                                ... on Organization {{
+                                    login
+                                }}
                             }}
                         }}
                     }}
@@ -335,8 +348,8 @@ class ProjectSearchManager:
         # Text search in title and description
         if search_filter.query:
             query_lower = search_filter.query.lower()
-            title = project_node.get("title", "").lower()
-            description = project_node.get("shortDescription", "").lower()
+            title = (project_node.get("title") or "").lower()
+            description = (project_node.get("shortDescription") or "").lower()
 
             if query_lower not in title and query_lower not in description:
                 return False

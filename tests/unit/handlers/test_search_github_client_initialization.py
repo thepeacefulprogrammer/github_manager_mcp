@@ -15,6 +15,13 @@ from github_project_manager_mcp.handlers import project_search_handlers
 class TestSearchGitHubClientInitialization:
     """Test GitHub client initialization for search functionality."""
 
+    @pytest.fixture(autouse=True)
+    def setup_method(self):
+        """Reset global state before each test."""
+        project_search_handlers.github_client = None
+        project_search_handlers.search_manager = None
+        project_search_handlers._search_manager_client_id = None
+
     def test_search_github_client_not_initialized_by_default(self):
         """Test that the search handlers' github_client is None by default."""
         # This should fail initially, showing the issue
@@ -88,8 +95,3 @@ class TestSearchGitHubClientInitialization:
         # Assert
         assert result.isError is False
         assert "No projects found" in result.content[0].text
-
-    def teardown_method(self):
-        """Clean up after each test."""
-        project_search_handlers.github_client = None
-        project_search_handlers.search_manager = None
