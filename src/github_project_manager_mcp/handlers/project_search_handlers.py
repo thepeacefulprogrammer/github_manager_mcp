@@ -66,10 +66,104 @@ def _ensure_search_manager_initialized() -> None:
 
     # Check if we need to create or recreate the search manager
     if search_manager is None or _search_manager_client_id != current_client_id:
+        try:
+            search_manager = ProjectSearchManager(github_client)
+            _search_manager_client_id = current_client_id
+            logger.info(
+                f"Search manager initialized with client ID: {current_client_id}"
+            )
+        except Exception as e:
+            logger.error(f"Failed to initialize search manager: {str(e)}")
+            raise RuntimeError(f"Error initializing search functionality: {str(e)}")
 
-        search_manager = ProjectSearchManager(github_client)
-        _search_manager_client_id = current_client_id
-        logger.info(f"Search manager initialized with client ID: {current_client_id}")
+
+def _classify_and_format_error(error: Exception) -> str:
+    """
+    Classify the error and return a user-friendly error message.
+
+    Args:
+        error: The exception that occurred
+
+    Returns:
+        User-friendly error message string
+    """
+    error_msg = str(error).lower()
+
+    # Search manager initialization errors (check first before other patterns)
+    if any(
+        keyword in error_msg
+        for keyword in [
+            "error initializing search functionality",
+            "search manager",
+            "initializing search",
+        ]
+    ):
+        return (
+            "Error initializing search functionality. "
+            "Please check your GitHub token and try again."
+        )
+
+    # Authentication/Token errors
+    elif any(
+        keyword in error_msg
+        for keyword in [
+            "bad credentials",
+            "unauthorized",
+            "invalid token",
+            "expired token",
+        ]
+    ):
+        return (
+            "Authentication failed: Invalid or expired GitHub token. "
+            "Please check your GitHub token and make sure your token has the required permissions (project:read, read:org)."
+        )
+
+    # Rate limit errors
+    elif any(keyword in error_msg for keyword in ["rate limit", "api rate limit"]):
+        return (
+            "GitHub API rate limit exceeded. Please wait a few minutes and try again. "
+            "Consider using a personal access token for higher limits."
+        )
+
+    # Permission errors
+    elif any(
+        keyword in error_msg
+        for keyword in [
+            "resource not accessible",
+            "permission denied",
+            "insufficient privileges",
+        ]
+    ):
+        return (
+            "Permission denied: Your GitHub token does not have required permissions. "
+            "Make sure your token includes 'project:read' and 'read:org' scopes."
+        )
+
+    # Client reinitialization errors (check before network errors)
+    elif any(
+        keyword in error_msg for keyword in ["client changed", "operation interrupted"]
+    ):
+        return (
+            "Search operation was interrupted due to configuration changes. "
+            "Please try again."
+        )
+
+    # Network/Connection errors
+    elif any(
+        keyword in error_msg
+        for keyword in ["connection", "timeout", "network", "unreachable"]
+    ):
+        return (
+            "Network connection error: Unable to connect to GitHub API. "
+            "Check your internet connection and try again."
+        )
+
+    # Generic unexpected errors
+    else:
+        return (
+            "An unexpected error occurred while searching projects. "
+            "Please try again. If the problem persists, check your GitHub token and network connection."
+        )
 
 
 async def search_projects_handler(arguments: Dict[str, Any]) -> CallToolResult:
@@ -101,12 +195,13 @@ async def search_projects_handler(arguments: Dict[str, Any]) -> CallToolResult:
         # Ensure search manager is properly initialized
         try:
             _ensure_search_manager_initialized()
-        except ValueError as e:
+        except Exception as e:
+            error_message = _classify_and_format_error(e)
             return CallToolResult(
                 content=[
                     TextContent(
                         type="text",
-                        text=f"Error: {str(e)}",
+                        text=error_message,
                     )
                 ],
                 isError=True,
@@ -256,17 +351,17 @@ async def search_projects_handler(arguments: Dict[str, Any]) -> CallToolResult:
 
         except Exception as e:
             logger.error(f"Search failed: {str(e)}")
+            error_message = _classify_and_format_error(e)
             return CallToolResult(
-                content=[
-                    TextContent(type="text", text=f"Error searching projects: {str(e)}")
-                ],
+                content=[TextContent(type="text", text=error_message)],
                 isError=True,
             )
 
     except Exception as e:
         logger.error(f"Unexpected error in search_projects_handler: {str(e)}")
+        error_message = _classify_and_format_error(e)
         return CallToolResult(
-            content=[TextContent(type="text", text=f"Error: {str(e)}")],
+            content=[TextContent(type="text", text=error_message)],
             isError=True,
         )
 
@@ -300,12 +395,13 @@ async def search_projects_advanced_handler(arguments: Dict[str, Any]) -> CallToo
         # Ensure search manager is properly initialized
         try:
             _ensure_search_manager_initialized()
-        except ValueError as e:
+        except Exception as e:
+            error_message = _classify_and_format_error(e)
             return CallToolResult(
                 content=[
                     TextContent(
                         type="text",
-                        text=f"Error: {str(e)}",
+                        text=error_message,
                     )
                 ],
                 isError=True,
@@ -377,51 +473,46 @@ async def search_projects_advanced_handler(arguments: Dict[str, Any]) -> CallToo
         try:
             result = await search_manager.search_projects(search_filter)
 
-            # Format response with advanced search context
+            # Format response (same as basic search)
             if not result.projects:
-                response_text = "🔍 **Advanced Search - No Results**\n\n"
+                response_text = "🔍 **No projects found**\n\n"
                 response_text += (
-                    "No projects found matching the specified advanced criteria.\n"
+                    "No projects found with the specified advanced criteria"
                 )
-                response_text += f"Search completed in {result.search_time_ms:.1f}ms"
+                if result.search_time_ms < 1000:
+                    response_text += f" (searched in {result.search_time_ms:.1f}ms)"
+                else:
+                    response_text += f" (searched in {result.search_time_ms/1000:.1f}s)"
             else:
-                response_text = f"🔍 **Advanced Search Results**\n"
-                response_text += f"Found {result.total_count} project(s) in {result.search_time_ms:.1f}ms\n\n"
-
-                # Show search criteria summary
-                response_text += "**Search Criteria:**\n"
-                if search_filter.query:
-                    response_text += f"• Query: '{search_filter.query}'\n"
-                if search_filter.visibility:
+                response_text = f"🔍 **Found {result.total_count} project(s)**"
+                if result.search_time_ms < 1000:
+                    response_text += f" (searched in {result.search_time_ms:.1f}ms)\n\n"
+                else:
                     response_text += (
-                        f"• Visibility: {search_filter.visibility.title()}\n"
+                        f" (searched in {result.search_time_ms/1000:.1f}s)\n\n"
                     )
-                if search_filter.owner:
-                    response_text += f"• Owner: {search_filter.owner}\n"
-                if search_filter.created_after or search_filter.created_before:
-                    response_text += "• Created date filter applied\n"
-                if search_filter.updated_after or search_filter.updated_before:
-                    response_text += "• Updated date filter applied\n"
-                response_text += (
-                    f"• Sort: {search_filter.sort_by} ({search_filter.sort_order})\n"
-                )
-                response_text += f"• Limit: {search_filter.limit}\n\n"
 
-                response_text += "**Results:**\n"
                 for i, project in enumerate(result.projects, 1):
-                    response_text += (
-                        f"{i}. **{project['title']}** (`{project['id']}`)\n"
-                    )
+                    response_text += f"**{i}. {project['title']}**\n"
+                    response_text += f"   • ID: `{project['id']}`\n"
                     if project.get("shortDescription"):
-                        response_text += f"   {project['shortDescription']}\n"
-                    response_text += f"   {project['owner']} • {'Public' if project.get('public') else 'Private'}"
+                        response_text += (
+                            f"   • Description: {project['shortDescription']}\n"
+                        )
+                    response_text += f"   • Visibility: {'Public' if project.get('public') else 'Private'}\n"
+                    if project.get("owner"):
+                        response_text += f"   • Owner: {project['owner']}\n"
+                    if project.get("createdAt"):
+                        created_date = project["createdAt"][:10]
+                        response_text += f"   • Created: {created_date}\n"
                     if project.get("updatedAt"):
                         updated_date = project["updatedAt"][:10]
-                        response_text += f" • Updated {updated_date}"
-                    response_text += "\n\n"
+                        response_text += f"   • Updated: {updated_date}\n"
+                    response_text += "\n"
 
                 if result.has_next_page:
-                    response_text += f"📄 *Showing {len(result.projects)} of {result.total_count} total results*"
+                    response_text += f"📄 *Showing first {len(result.projects)} of {result.total_count} results*\n"
+                    response_text += "*Use pagination parameters to see more results*"
 
             return CallToolResult(
                 content=[TextContent(type="text", text=response_text)],
@@ -430,19 +521,17 @@ async def search_projects_advanced_handler(arguments: Dict[str, Any]) -> CallToo
 
         except Exception as e:
             logger.error(f"Advanced search failed: {str(e)}")
+            error_message = _classify_and_format_error(e)
             return CallToolResult(
-                content=[
-                    TextContent(
-                        type="text", text=f"Error performing advanced search: {str(e)}"
-                    )
-                ],
+                content=[TextContent(type="text", text=error_message)],
                 isError=True,
             )
 
     except Exception as e:
         logger.error(f"Unexpected error in search_projects_advanced_handler: {str(e)}")
+        error_message = _classify_and_format_error(e)
         return CallToolResult(
-            content=[TextContent(type="text", text=f"Error: {str(e)}")],
+            content=[TextContent(type="text", text=error_message)],
             isError=True,
         )
 

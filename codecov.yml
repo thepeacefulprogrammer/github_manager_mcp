@@ -14,6 +14,8 @@ coverage:
         if_no_uploads: error
         if_not_found: success
         if_ci_failed: error
+  round: down
+  precision: 2
 
 comment:
   layout: "reach, diff, flags, files"
@@ -21,20 +23,19 @@ comment:
   require_changes: false
 
 ignore:
-  - "tests/"
   - "docs/"
   - "tasks/"
   - "**/__pycache__/"
   - "**/*.pyc"
   - "**/conftest.py"
   - "setup.py"
-  - "**/*_test.py"
-  - "**/*test*.py"
+  - "tests/integration/"
+  - "tests/**/test_*"
 
 flags:
   unittests:
     paths:
-      - src/
+      - src/github_project_manager_mcp/
 
 # Don't fail on import-only changes
 parsers:

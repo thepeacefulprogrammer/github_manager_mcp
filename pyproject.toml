@@ -130,8 +130,15 @@ exclude = [".git", "__pycache__", "build", "dist", ".venv", ".tox"]
 [tool.coverage.run]
 source = ["src"]
 omit = ["*/tests/*", "*/__pycache__/*"]
+relative_files = true
 
 [tool.coverage.report]
 precision = 2
 show_missing = true
 skip_covered = false
+
+[tool.coverage.xml]
+output = "coverage.xml"
+
+[tool.coverage.html]
+directory = "htmlcov"
