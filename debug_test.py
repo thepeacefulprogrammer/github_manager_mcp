@@ -1,6 +1,6 @@
 import asyncio
-from unittest.mock import AsyncMock
 import sys
+from unittest.mock import AsyncMock
 
 sys.path.append("src")
 from github_project_manager_mcp.utils.relationship_manager import RelationshipManager

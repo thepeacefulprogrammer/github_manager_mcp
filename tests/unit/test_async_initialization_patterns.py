@@ -4,12 +4,14 @@ Test async initialization patterns for search functionality.
 Tests for Task 3.3: Ensure proper async initialization patterns for GitHub client in search contexts
 """
 
-import pytest
 import asyncio
-from unittest.mock import Mock, patch, AsyncMock, MagicMock
+from unittest.mock import AsyncMock, MagicMock, Mock, patch
+
+import pytest
+
+from github_project_manager_mcp.github_client import GitHubClient
 from github_project_manager_mcp.handlers import project_search_handlers
 from github_project_manager_mcp.utils.project_search import ProjectSearchManager
-from github_project_manager_mcp.github_client import GitHubClient
 
 
 class TestAsyncInitializationPatterns:

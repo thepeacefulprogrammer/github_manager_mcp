@@ -4,12 +4,14 @@ Test MCP server search handler GitHub client initialization.
 Tests for Task 3.1-3.2: Verify that the search handlers' GitHub client is properly initialized by the MCP server.
 """
 
+from unittest.mock import AsyncMock, Mock, patch
+
 import pytest
-from unittest.mock import Mock, patch, AsyncMock
+
+from github_project_manager_mcp.handlers import project_search_handlers
 from github_project_manager_mcp.mcp_server_fastmcp import (
     GitHubProjectManagerMCPFastServer,
 )
-from github_project_manager_mcp.handlers import project_search_handlers
 
 
 class TestMCPServerSearchInitialization:

@@ -169,11 +169,11 @@ except ImportError as e:
 
 try:
     from github_project_manager_mcp.handlers.project_search_handlers import (
-        search_projects_advanced_handler,
-        search_projects_handler,
+        initialize_github_client as initialize_search_github_client,
     )
     from github_project_manager_mcp.handlers.project_search_handlers import (
-        initialize_github_client as initialize_search_github_client,
+        search_projects_advanced_handler,
+        search_projects_handler,
     )
 
     logger.info("Successfully imported project search handlers")

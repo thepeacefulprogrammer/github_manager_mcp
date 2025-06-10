@@ -4,11 +4,12 @@ Test GitHub client initialization for search handlers.
 Tests for Task 3.1: Debug the "GitHub client not initialized" error in search_projects handler
 """
 
-import pytest
-from unittest.mock import Mock, patch, AsyncMock
+from unittest.mock import AsyncMock, Mock, patch
 
-from github_project_manager_mcp.handlers import project_search_handlers
+import pytest
+
 from github_project_manager_mcp.github_client import GitHubClient
+from github_project_manager_mcp.handlers import project_search_handlers
 
 
 class TestSearchGitHubClientInitialization:
