@@ -19,29 +19,27 @@ repos:
     hooks:
       - id: black
         language_version: python3
-        args: [--line-length=88]
+        args: [--line-length=88, --check, --diff]
 
   # Import sorting
   - repo: https://github.com/pycqa/isort
     rev: 5.13.2
     hooks:
       - id: isort
-        args: [--profile=black, --line-length=88]
+        args: [--profile=black, --line-length=88, --check-only, --diff]
 
-  # Linting (disabled for now due to configuration issues)
-  # - repo: https://github.com/pycqa/flake8
-  #   rev: 7.0.0
-  #   hooks:
-  #     - id: flake8
-  #       args:
-  #         [--max-line-length=120, --extend-ignore=E203, E501, F401, F841, F541]
-
-  # Type checking (disabled for now due to module path issues)
-  # - repo: https://github.com/pre-commit/mirrors-mypy
-  #   rev: v1.8.0
-  #   hooks:
-  #     - id: mypy
-  #       args: [--ignore-missing-imports, --disable-error-code=unreachable]
+  # Linting (now enabled to match CI)
+  - repo: https://github.com/pycqa/flake8
+    rev: 7.0.0
+    hooks:
+      - id: flake8
+        args:
+          - --count
+          - --select=E9,F63,F7,F82
+          - --show-source
+          - --statistics
+          - --max-complexity=10
+          - --max-line-length=88
 
   # Security checks
   - repo: https://github.com/pycqa/bandit
@@ -59,9 +57,25 @@ repos:
         types: [yaml]
         exclude: \.github/
 
-  # Test validation
+  # Test validation and code quality check that matches CI exactly
   - repo: local
     hooks:
+      - id: code-quality-check
+        name: code-quality-check (matches CI)
+        entry: |
+          bash -c "
+          echo 'Running code quality checks (matching CI)...' &&
+          black --check --diff src tests &&
+          isort --check-only --diff src tests &&
+          flake8 src tests --count --select=E9,F63,F7,F82 --show-source --statistics &&
+          flake8 src tests --count --exit-zero --max-complexity=10 --max-line-length=88 --statistics &&
+          echo 'Running mypy type checking (informational only)...' &&
+          (mypy src --ignore-missing-imports || echo 'mypy check completed with errors (non-blocking)')
+          "
+        language: system
+        types: [python]
+        pass_filenames: false
+        always_run: true
       - id: pytest-check
         name: pytest-check
         entry: python -m pytest tests/unit --tb=short -q
