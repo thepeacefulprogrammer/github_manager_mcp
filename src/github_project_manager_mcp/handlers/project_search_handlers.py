@@ -27,6 +27,9 @@ github_client: Optional[GitHubClient] = None
 # Global search manager instance
 search_manager: Optional[ProjectSearchManager] = None
 
+# Track the client used to create the search manager for consistency
+_search_manager_client_id: Optional[id] = None
+
 
 def initialize_github_client(token: str) -> None:
     """
@@ -35,9 +38,38 @@ def initialize_github_client(token: str) -> None:
     Args:
         token: GitHub Personal Access Token
     """
-    global github_client
+    global github_client, search_manager, _search_manager_client_id
     github_client = GitHubClient(token=token, rate_limit_enabled=True)
+
+    # Reset search manager when client changes to ensure consistency
+    search_manager = None
+    _search_manager_client_id = None
+
     logger.info("GitHub client initialized for project search handlers")
+
+
+def _ensure_search_manager_initialized() -> None:
+    """
+    Ensure search manager is initialized with the current GitHub client.
+
+    This function handles:
+    - Lazy initialization of search manager
+    - Recreation when GitHub client changes
+    - Thread-safe access patterns
+    """
+    global search_manager, _search_manager_client_id
+
+    if not github_client:
+        raise ValueError("GitHub client not initialized")
+
+    current_client_id = id(github_client)
+
+    # Check if we need to create or recreate the search manager
+    if search_manager is None or _search_manager_client_id != current_client_id:
+
+        search_manager = ProjectSearchManager(github_client)
+        _search_manager_client_id = current_client_id
+        logger.info(f"Search manager initialized with client ID: {current_client_id}")
 
 
 async def search_projects_handler(arguments: Dict[str, Any]) -> CallToolResult:
@@ -66,10 +98,19 @@ async def search_projects_handler(arguments: Dict[str, Any]) -> CallToolResult:
                 isError=True,
             )
 
-        # Initialize search manager
-        global search_manager
-        if not search_manager:
-            search_manager = ProjectSearchManager(github_client)
+        # Ensure search manager is properly initialized
+        try:
+            _ensure_search_manager_initialized()
+        except ValueError as e:
+            return CallToolResult(
+                content=[
+                    TextContent(
+                        type="text",
+                        text=f"Error: {str(e)}",
+                    )
+                ],
+                isError=True,
+            )
 
         # Extract search parameters
         query = arguments.get("query", "")
@@ -256,10 +297,19 @@ async def search_projects_advanced_handler(arguments: Dict[str, Any]) -> CallToo
                 isError=True,
             )
 
-        # Initialize search manager
-        global search_manager
-        if not search_manager:
-            search_manager = ProjectSearchManager(github_client)
+        # Ensure search manager is properly initialized
+        try:
+            _ensure_search_manager_initialized()
+        except ValueError as e:
+            return CallToolResult(
+                content=[
+                    TextContent(
+                        type="text",
+                        text=f"Error: {str(e)}",
+                    )
+                ],
+                isError=True,
+            )
 
         # Extract search builder parameters
         builder_config = arguments.get("search_config", {})

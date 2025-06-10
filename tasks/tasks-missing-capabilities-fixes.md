@@ -25,10 +25,14 @@ Based on testing results, the GitHub Manager MCP server is 85% functional with t
 - `tests/unit/test_prd_model.py` - Updated model tests with correct field structure
 - `tests/unit/test_task_model.py` - Updated model tests with correct field structure
 - `tests/unit/handlers/test_prd_complete_graphql_fix.py` - NEW: Comprehensive tests for GraphQL query structure fixes
-- `src/github_project_manager_mcp/mcp_server_fastmcp.py` - Main MCP server that contains search project handlers
+- `src/github_project_manager_mcp/mcp_server_fastmcp.py` - Main MCP server that contains search project handlers and **FIXED** missing GitHub client initialization for search handlers
 - `src/github_project_manager_mcp/github_client.py` - GitHub client that may need initialization fixes for search functionality
 - `tests/unit/test_github_client.py` - Unit tests for GitHub client initialization issues
 - `tests/integration/test_end_to_end_workflow.py` - Integration tests for complete workflow validation (may need creation)
+- `tests/unit/handlers/test_search_github_client_initialization.py` - NEW: TDD tests for search handler GitHub client initialization debugging
+- `tests/unit/test_mcp_server_search_initialization.py` - NEW: Integration tests for MCP server search handler initialization
+- `tests/unit/test_async_initialization_patterns.py` - NEW: Comprehensive tests for async initialization patterns in search contexts
+- `src/github_project_manager_mcp/handlers/project_search_handlers.py` - **IMPROVED** async initialization patterns with proper client change detection and thread-safe manager recreation
 
 ### Notes
 
@@ -55,9 +59,9 @@ Based on testing results, the GitHub Manager MCP server is 85% functional with t
   - [x] 2.6 Test PRD completion with real GitHub API calls to ensure proper status updates
 
 - [ ] 3.0 Fix Search Functionality GitHub Client Initialization
-  - [ ] 3.1 Debug the "GitHub client not initialized" error in search_projects handler
-  - [ ] 3.2 Fix GitHub client initialization in the search handlers within the MCP server
-  - [ ] 3.3 Ensure proper async initialization patterns for GitHub client in search contexts
+  - [x] 3.1 Debug the "GitHub client not initialized" error in search_projects handler
+  - [x] 3.2 Fix GitHub client initialization in the search handlers within the MCP server
+  - [x] 3.3 Ensure proper async initialization patterns for GitHub client in search contexts
   - [ ] 3.4 Update error handling for GitHub client initialization failures
   - [ ] 3.5 Write unit tests to verify search functionality works with proper client initialization
   - [ ] 3.6 Test search functionality with real GitHub API calls to ensure proper project discovery

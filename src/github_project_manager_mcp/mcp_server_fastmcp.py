@@ -172,6 +172,9 @@ try:
         search_projects_advanced_handler,
         search_projects_handler,
     )
+    from github_project_manager_mcp.handlers.project_search_handlers import (
+        initialize_github_client as initialize_search_github_client,
+    )
 
     logger.info("Successfully imported project search handlers")
 except ImportError as e:
@@ -301,8 +304,9 @@ class GitHubProjectManagerMCPFastServer:
                 initialize_prd_github_client(github_token)
                 initialize_task_github_client(github_token)
                 initialize_subtask_github_client(github_token)
+                initialize_search_github_client(github_token)
                 logger.info(
-                    "GitHub client initialized successfully for project, PRD, task, and subtask handlers"
+                    "GitHub client initialized successfully for project, PRD, task, subtask, and search handlers"
                 )
             else:
                 logger.warning("GitHub client not initialized - no token available")
