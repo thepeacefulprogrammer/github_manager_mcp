@@ -6,14 +6,15 @@ is properly initialized, including various search scenarios, parameter validatio
 and edge cases.
 """
 
-import pytest
 from datetime import datetime, timezone
 from unittest.mock import AsyncMock, MagicMock, patch
 
+import pytest
+
 from github_project_manager_mcp.handlers import project_search_handlers
 from github_project_manager_mcp.utils.project_search import (
-    ProjectSearchResult,
     ProjectSearchFilter,
+    ProjectSearchResult,
 )
 
 
@@ -76,7 +77,9 @@ class TestSearchFunctionalityClientInitialization:
         # Arrange
         project_search_handlers.github_client = mock_github_client
 
-        with patch("github_project_manager_mcp.handlers.project_search_handlers.ProjectSearchManager") as mock_manager_class:
+        with patch(
+            "github_project_manager_mcp.handlers.project_search_handlers.ProjectSearchManager"
+        ) as mock_manager_class:
             mock_manager_class.return_value = mock_search_manager
             mock_search_manager.search_projects.return_value = sample_search_result
 
@@ -107,7 +110,9 @@ class TestSearchFunctionalityClientInitialization:
         # Arrange
         project_search_handlers.github_client = mock_github_client
 
-        with patch("github_project_manager_mcp.handlers.project_search_handlers.ProjectSearchManager") as mock_manager_class:
+        with patch(
+            "github_project_manager_mcp.handlers.project_search_handlers.ProjectSearchManager"
+        ) as mock_manager_class:
             mock_manager_class.return_value = mock_search_manager
             mock_search_manager.search_projects.return_value = sample_search_result
 
@@ -154,7 +159,9 @@ class TestSearchFunctionalityClientInitialization:
             has_next_page=False,
         )
 
-        with patch("github_project_manager_mcp.handlers.project_search_handlers.ProjectSearchManager") as mock_manager_class:
+        with patch(
+            "github_project_manager_mcp.handlers.project_search_handlers.ProjectSearchManager"
+        ) as mock_manager_class:
             mock_manager_class.return_value = mock_search_manager
             mock_search_manager.search_projects.return_value = empty_result
 
@@ -193,7 +200,9 @@ class TestSearchFunctionalityClientInitialization:
             has_next_page=True,
         )
 
-        with patch("github_project_manager_mcp.handlers.project_search_handlers.ProjectSearchManager") as mock_manager_class:
+        with patch(
+            "github_project_manager_mcp.handlers.project_search_handlers.ProjectSearchManager"
+        ) as mock_manager_class:
             mock_manager_class.return_value = mock_search_manager
             mock_search_manager.search_projects.return_value = paginated_result
 
@@ -239,7 +248,9 @@ class TestSearchFunctionalityClientInitialization:
         # Arrange
         project_search_handlers.github_client = mock_github_client
 
-        with patch("github_project_manager_mcp.handlers.project_search_handlers.ProjectSearchManager") as mock_manager_class:
+        with patch(
+            "github_project_manager_mcp.handlers.project_search_handlers.ProjectSearchManager"
+        ) as mock_manager_class:
             mock_manager_class.return_value = mock_search_manager
             mock_search_manager.search_projects.return_value = sample_search_result
 
@@ -254,7 +265,9 @@ class TestSearchFunctionalityClientInitialization:
             }
 
             # Act
-            result = await project_search_handlers.search_projects_advanced_handler(arguments)
+            result = await project_search_handlers.search_projects_advanced_handler(
+                arguments
+            )
 
             # Assert
             assert not result.isError
@@ -270,7 +283,9 @@ class TestSearchFunctionalityClientInitialization:
         # Arrange
         project_search_handlers.github_client = mock_github_client
 
-        with patch("github_project_manager_mcp.handlers.project_search_handlers.ProjectSearchManager") as mock_manager_class:
+        with patch(
+            "github_project_manager_mcp.handlers.project_search_handlers.ProjectSearchManager"
+        ) as mock_manager_class:
             mock_manager_class.return_value = mock_search_manager
             mock_search_manager.search_projects.return_value = sample_search_result
 
@@ -284,7 +299,9 @@ class TestSearchFunctionalityClientInitialization:
             }
 
             # Act
-            result = await project_search_handlers.search_projects_advanced_handler(arguments)
+            result = await project_search_handlers.search_projects_advanced_handler(
+                arguments
+            )
 
             # Assert
             assert not result.isError
@@ -297,7 +314,9 @@ class TestSearchFunctionalityClientInitialization:
         # Arrange
         project_search_handlers.github_client = mock_github_client
 
-        with patch("github_project_manager_mcp.handlers.project_search_handlers.ProjectSearchManager") as mock_manager_class:
+        with patch(
+            "github_project_manager_mcp.handlers.project_search_handlers.ProjectSearchManager"
+        ) as mock_manager_class:
             mock_manager_class.return_value = mock_search_manager
             mock_search_manager.search_projects.return_value = ProjectSearchResult(
                 projects=[], total_count=0, search_time_ms=10.0, has_next_page=False
@@ -326,7 +345,9 @@ class TestSearchFunctionalityClientInitialization:
         client2 = MagicMock()
         client2.token = "token2"
 
-        with patch("github_project_manager_mcp.handlers.project_search_handlers.ProjectSearchManager") as mock_manager_class:
+        with patch(
+            "github_project_manager_mcp.handlers.project_search_handlers.ProjectSearchManager"
+        ) as mock_manager_class:
             mock_manager_class.return_value = mock_search_manager
             mock_search_manager.search_projects.return_value = ProjectSearchResult(
                 projects=[], total_count=0, search_time_ms=10.0, has_next_page=False
@@ -375,7 +396,9 @@ class TestSearchFunctionalityClientInitialization:
             has_next_page=False,
         )
 
-        with patch("github_project_manager_mcp.handlers.project_search_handlers.ProjectSearchManager") as mock_manager_class:
+        with patch(
+            "github_project_manager_mcp.handlers.project_search_handlers.ProjectSearchManager"
+        ) as mock_manager_class:
             mock_manager_class.return_value = mock_search_manager
             mock_search_manager.search_projects.return_value = complete_project_data
 
@@ -418,7 +441,9 @@ class TestSearchFunctionalityClientInitialization:
             has_next_page=False,
         )
 
-        with patch("github_project_manager_mcp.handlers.project_search_handlers.ProjectSearchManager") as mock_manager_class:
+        with patch(
+            "github_project_manager_mcp.handlers.project_search_handlers.ProjectSearchManager"
+        ) as mock_manager_class:
             mock_manager_class.return_value = mock_search_manager
             mock_search_manager.search_projects.return_value = minimal_project_data
 

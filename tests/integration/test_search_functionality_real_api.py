@@ -6,12 +6,13 @@ ensuring proper project discovery, filtering, and data retrieval.
 """
 
 import os
-import pytest
-from datetime import datetime, timezone, timedelta
+from datetime import datetime, timedelta, timezone
 from unittest.mock import patch
 
-from github_project_manager_mcp.handlers import project_search_handlers
+import pytest
+
 from github_project_manager_mcp.github_client import GitHubClient
+from github_project_manager_mcp.handlers import project_search_handlers
 
 
 class TestSearchFunctionalityRealAPI:
@@ -38,7 +39,9 @@ class TestSearchFunctionalityRealAPI:
         project_search_handlers._search_manager_client_id = None
 
     @pytest.mark.integration
-    async def test_search_projects_basic_functionality_real_api(self, initialized_client):
+    async def test_search_projects_basic_functionality_real_api(
+        self, initialized_client
+    ):
         """Test basic search functionality with real GitHub API."""
         # Arrange
         arguments = {
@@ -56,13 +59,19 @@ class TestSearchFunctionalityRealAPI:
         content_text = result.content[0].text
 
         # Should either find projects or indicate no results
-        assert ("Found" in content_text and "project(s)" in content_text) or "No projects found" in content_text
+        assert (
+            "Found" in content_text and "project(s)" in content_text
+        ) or "No projects found" in content_text
 
         # Should include search timing
-        assert ("searched in" in content_text and ("ms" in content_text or "s" in content_text))
+        assert "searched in" in content_text and (
+            "ms" in content_text or "s" in content_text
+        )
 
     @pytest.mark.integration
-    async def test_search_projects_with_visibility_filter_real_api(self, initialized_client):
+    async def test_search_projects_with_visibility_filter_real_api(
+        self, initialized_client
+    ):
         """Test search with visibility filter using real GitHub API."""
         # Arrange - search for public projects which are more likely to exist
         arguments = {
@@ -119,7 +128,9 @@ class TestSearchFunctionalityRealAPI:
         }
 
         # Act
-        result = await project_search_handlers.search_projects_advanced_handler(arguments)
+        result = await project_search_handlers.search_projects_advanced_handler(
+            arguments
+        )
 
         # Assert
         assert not result.isError, f"Advanced search failed: {result.content[0].text}"
@@ -130,7 +141,9 @@ class TestSearchFunctionalityRealAPI:
         assert "searched in" in content_text
 
     @pytest.mark.integration
-    async def test_search_projects_parameter_validation_real_api(self, initialized_client):
+    async def test_search_projects_parameter_validation_real_api(
+        self, initialized_client
+    ):
         """Test parameter validation with real GitHub API."""
         # Arrange - invalid limit
         arguments = {
@@ -258,7 +271,9 @@ class TestSearchFunctionalityRealAPI:
         assert "Invalid date format" in result.content[0].text
 
     @pytest.mark.integration
-    async def test_search_projects_rate_limit_awareness_real_api(self, initialized_client):
+    async def test_search_projects_rate_limit_awareness_real_api(
+        self, initialized_client
+    ):
         """Test that search functionality is aware of rate limits."""
         # Arrange - multiple searches to test rate limit handling
         arguments = {"query": "test", "limit": 1}
@@ -275,12 +290,15 @@ class TestSearchFunctionalityRealAPI:
                 # If there's an error, it should be a meaningful one
                 error_text = result.content[0].text.lower()
                 # Should not be a generic error
-                assert any(keyword in error_text for keyword in [
-                    "rate limit", "authentication", "network", "token"
-                ]), f"Unexpected error in search {i}: {result.content[0].text}"
+                assert any(
+                    keyword in error_text
+                    for keyword in ["rate limit", "authentication", "network", "token"]
+                ), f"Unexpected error in search {i}: {result.content[0].text}"
             else:
                 # If successful, should have proper format
-                assert ("Found" in result.content[0].text) or ("No projects found" in result.content[0].text)
+                assert ("Found" in result.content[0].text) or (
+                    "No projects found" in result.content[0].text
+                )
 
     @pytest.mark.integration
     async def test_search_projects_real_api_data_consistency(self, initialized_client):
