@@ -15,6 +15,7 @@ from mcp.types import CallToolResult, TextContent, Tool
 from ..github_client import GitHubClient
 from ..models.project import Project
 from ..utils.query_builder import ProjectQueryBuilder
+from ..utils.validation import ProjectValidator, ValidationError
 
 logger = logging.getLogger(__name__)
 
@@ -22,6 +23,7 @@ logger = logging.getLogger(__name__)
 # GitHub Client instance (will be initialized by the MCP server)
 github_client: Optional[GitHubClient] = None
 query_builder = ProjectQueryBuilder()
+project_validator = ProjectValidator()
 
 
 def initialize_github_client(token: str) -> None:
@@ -184,31 +186,33 @@ async def create_project_handler(arguments: Dict[str, Any]) -> CallToolResult:
         CallToolResult with success/error information
     """
     try:
-        # Validate required arguments
+        # Extract parameters
         name = arguments.get("name")
         description = arguments.get("description")
         repository = arguments.get("repository")
         visibility = arguments.get("visibility", "PRIVATE")
 
-        if not name:
+        # Comprehensive validation using ProjectValidator
+        project_data = {
+            "name": name,
+            "description": description,
+            "repository": repository,
+            "visibility": visibility,
+        }
+
+        validation_result = project_validator.validate_project_creation(project_data)
+
+        if not validation_result.is_valid:
+            error_message = f"Validation failed: {', '.join(validation_result.errors)}"
             return CallToolResult(
-                content=[
-                    TextContent(type="text", text="Error: 'name' parameter is required")
-                ],
+                content=[TextContent(type="text", text=f"Error: {error_message}")],
                 isError=True,
             )
 
-        # Description is optional for project creation
-        # GitHub Projects v2 API doesn't accept description in CreateProjectV2Input
-
-        if not repository:
-            return CallToolResult(
-                content=[
-                    TextContent(
-                        type="text", text="Error: 'repository' parameter is required"
-                    )
-                ],
-                isError=True,
+        # Log warnings if any
+        if validation_result.warnings:
+            logger.warning(
+                f"Project creation warnings: {', '.join(validation_result.warnings)}"
             )
 
         if not github_client:
@@ -223,7 +227,7 @@ async def create_project_handler(arguments: Dict[str, Any]) -> CallToolResult:
 
         logger.info(f"Creating project '{name}' for repository '{repository}'")
 
-        # Get owner ID from repository
+        # Get owner ID from repository (repository format already validated)
         try:
             owner_id = await get_owner_id_from_repository(repository)
         except ValueError as e:
@@ -724,13 +728,14 @@ async def update_project_handler(arguments: Dict[str, Any]) -> CallToolResult:
         CallToolResult with success/error information
     """
     try:
-        # Validate required arguments
+        # Extract parameters
         project_id = arguments.get("project_id")
         title = arguments.get("title")
         short_description = arguments.get("short_description")
         readme = arguments.get("readme")
         public = arguments.get("public")
 
+        # Basic project_id validation
         if not project_id:
             return CallToolResult(
                 content=[
@@ -741,17 +746,27 @@ async def update_project_handler(arguments: Dict[str, Any]) -> CallToolResult:
                 isError=True,
             )
 
-        # Check if at least one field to update is provided
-        updates_provided = any([title, short_description, readme, public is not None])
-        if not updates_provided:
+        # Comprehensive validation using ProjectValidator
+        update_data = {
+            "title": title,
+            "short_description": short_description,
+            "readme": readme,
+            "public": public,
+        }
+
+        validation_result = project_validator.validate_project_update(update_data)
+
+        if not validation_result.is_valid:
+            error_message = f"Validation failed: {', '.join(validation_result.errors)}"
             return CallToolResult(
-                content=[
-                    TextContent(
-                        type="text",
-                        text="Error: At least one field to update must be provided (title, short_description, readme, or public)",
-                    )
-                ],
+                content=[TextContent(type="text", text=f"Error: {error_message}")],
                 isError=True,
+            )
+
+        # Log warnings if any
+        if validation_result.warnings:
+            logger.warning(
+                f"Project update warnings: {', '.join(validation_result.warnings)}"
             )
 
         if not github_client:

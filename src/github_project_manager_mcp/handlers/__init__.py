@@ -23,6 +23,19 @@ try:
 except ImportError:
     PROJECT_IMPORTS = []
 
+try:
+    from .project_search_handlers import (
+        SEARCH_PROJECT_TOOL_HANDLERS,
+        SEARCH_PROJECT_TOOLS,
+    )
+
+    SEARCH_IMPORTS = [
+        "SEARCH_PROJECT_TOOLS",
+        "SEARCH_PROJECT_TOOL_HANDLERS",
+    ]
+except ImportError:
+    SEARCH_IMPORTS = []
+
 # try:
 #     from .prd_handlers import *
 #     from .task_handlers import *
@@ -31,6 +44,10 @@ except ImportError:
 #     # Handler modules not yet implemented
 #     pass
 
-__all__: List[str] = PROJECT_IMPORTS + [
-    # Will be populated as more handlers are implemented
-]
+__all__: List[str] = (
+    PROJECT_IMPORTS
+    + SEARCH_IMPORTS
+    + [
+        # Will be populated as more handlers are implemented
+    ]
+)

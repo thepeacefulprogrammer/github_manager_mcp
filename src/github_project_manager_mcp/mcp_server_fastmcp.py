@@ -167,6 +167,18 @@ except ImportError as e:
     logger.error(f"Traceback: {traceback.format_exc()}")
     sys.exit(1)
 
+try:
+    from github_project_manager_mcp.handlers.project_search_handlers import (
+        search_projects_handler,
+        search_projects_advanced_handler,
+    )
+
+    logger.info("Successfully imported project search handlers")
+except ImportError as e:
+    logger.error(f"Failed to import project search handlers: {e}")
+    logger.error(f"Traceback: {traceback.format_exc()}")
+    sys.exit(1)
+
 # Load environment variables
 load_dotenv()
 logger.info("Environment variables loaded")
@@ -1165,6 +1177,94 @@ class GitHubProjectManagerMCPFastServer:
                 logger.error(f"Error in complete_subtask: {e}")
                 logger.error(f"Traceback: {traceback.format_exc()}")
                 return f'{{"success": false, "error": "Failed to complete subtask: {str(e)}"}}'
+
+        @self.mcp.tool()
+        async def search_projects(
+            query: str = "",
+            visibility: str = None,
+            owner: str = None,
+            created_after: str = None,
+            created_before: str = None,
+            updated_after: str = None,
+            updated_before: str = None,
+            limit: int = 25,
+            sort_by: str = "updated",
+            sort_order: str = "desc",
+        ) -> str:
+            """Search for GitHub Projects v2 using various filter criteria. Supports text search across project titles and descriptions, filtering by visibility, ownership, creation/update dates, and result sorting."""
+            logger.info(
+                f"Search projects called: query={query}, visibility={visibility}, owner={owner}, limit={limit}"
+            )
+
+            try:
+                await self._ensure_async_initialized()
+
+                if not self.github_client:
+                    return '{"success": false, "error": "GitHub client not initialized - check token configuration"}'
+
+                # Call the existing search projects handler
+                args = {
+                    "query": query,
+                    "limit": limit,
+                    "sort_by": sort_by,
+                    "sort_order": sort_order,
+                }
+                if visibility:
+                    args["visibility"] = visibility
+                if owner:
+                    args["owner"] = owner
+                if created_after:
+                    args["created_after"] = created_after
+                if created_before:
+                    args["created_before"] = created_before
+                if updated_after:
+                    args["updated_after"] = updated_after
+                if updated_before:
+                    args["updated_before"] = updated_before
+
+                result = await search_projects_handler(args)
+                logger.info(f"Search projects result: {result}")
+
+                # Extract text content from CallToolResult
+                if hasattr(result, "content") and result.content:
+                    return result.content[0].text
+                else:
+                    return str(result)
+
+            except Exception as e:
+                logger.error(f"Error in search_projects: {e}")
+                logger.error(f"Traceback: {traceback.format_exc()}")
+                return f'{{"success": false, "error": "Failed to search projects: {str(e)}"}}'
+
+        @self.mcp.tool()
+        async def search_projects_advanced(search_config: dict) -> str:
+            """Advanced project search with structured query builder. Provides a more structured approach to project searching using a configuration object with nested search criteria."""
+            logger.info(
+                f"Search projects advanced called: search_config={search_config}"
+            )
+
+            try:
+                await self._ensure_async_initialized()
+
+                if not self.github_client:
+                    return '{"success": false, "error": "GitHub client not initialized - check token configuration"}'
+
+                # Call the existing advanced search projects handler
+                args = {"search_config": search_config}
+
+                result = await search_projects_advanced_handler(args)
+                logger.info(f"Search projects advanced result: {result}")
+
+                # Extract text content from CallToolResult
+                if hasattr(result, "content") and result.content:
+                    return result.content[0].text
+                else:
+                    return str(result)
+
+            except Exception as e:
+                logger.error(f"Error in search_projects_advanced: {e}")
+                logger.error(f"Traceback: {traceback.format_exc()}")
+                return f'{{"success": false, "error": "Failed to perform advanced search: {str(e)}"}}'
 
         # Log successful tool registration
         logger.info("Successfully registered all MCP tools with FastMCP")

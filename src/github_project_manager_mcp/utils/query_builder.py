@@ -604,7 +604,10 @@ query {{
           endCursor
         }"""
 
-        # Similar structure to list_prds_in_project but focused on tasks
+        # Note: GitHub Projects v2 API doesn't support GraphQL-level filtering by field values.
+        # When parent_prd_id is specified, we fetch more items to compensate for client-side filtering.
+        # This improves the likelihood of returning meaningful results after filtering.
+
         query = f"""
 query {{
   node(id: {self._escape_string(project_id)}) {{

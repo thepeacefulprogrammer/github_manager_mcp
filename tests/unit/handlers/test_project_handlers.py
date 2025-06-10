@@ -1037,7 +1037,7 @@ class TestUpdateProjectHandler:
 
         assert result.isError
         assert len(result.content) == 1
-        assert "At least one field to update must be provided" in result.content[0].text
+        assert "At least one field must be updated" in result.content[0].text
 
     @pytest.mark.asyncio
     async def test_update_project_empty_string_fields_ignored(self):
@@ -1052,7 +1052,7 @@ class TestUpdateProjectHandler:
         )
 
         assert result.isError
-        assert "At least one field to update must be provided" in result.content[0].text
+        assert "At least one field must be updated" in result.content[0].text
 
     @pytest.mark.asyncio
     async def test_update_project_github_client_not_initialized(self):

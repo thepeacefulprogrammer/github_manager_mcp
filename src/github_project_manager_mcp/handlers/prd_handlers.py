@@ -14,6 +14,7 @@ from mcp.types import CallToolResult, TextContent, Tool
 from github_project_manager_mcp.github_client import GitHubClient
 from github_project_manager_mcp.models.prd import PRD, PRDPriority, PRDStatus
 from github_project_manager_mcp.utils.query_builder import ProjectQueryBuilder
+from github_project_manager_mcp.utils.validation import PRDValidator, ValidationError
 
 logger = logging.getLogger(__name__)
 
@@ -139,10 +140,11 @@ async def add_prd_to_project_handler(arguments: Dict[str, Any]) -> CallToolResul
         CallToolResult with operation results
     """
     try:
-        # Validate required parameters
-        project_id = arguments.get("project_id", "").strip()
-        title = arguments.get("title", "").strip()
+        # Comprehensive validation using PRDValidator
+        validator = PRDValidator()
 
+        # Validate project_id separately
+        project_id = arguments.get("project_id", "").strip()
         if not project_id:
             return CallToolResult(
                 content=[
@@ -154,25 +156,41 @@ async def add_prd_to_project_handler(arguments: Dict[str, Any]) -> CallToolResul
                 isError=True,
             )
 
-        if not title:
+        # Validate PRD creation data
+        prd_data = {
+            "title": arguments.get("title", "").strip(),
+            "description": arguments.get("description", ""),
+            "acceptance_criteria": arguments.get("acceptance_criteria"),
+            "business_value": arguments.get("business_value"),
+            "technical_requirements": arguments.get("technical_requirements"),
+            "priority": arguments.get("priority", "Medium"),
+            "status": arguments.get("status", "Backlog"),
+        }
+
+        validation_result = validator.validate_prd_creation(prd_data)
+        if not validation_result.is_valid:
+            error_message = f"Validation failed: {', '.join(validation_result.errors)}"
             return CallToolResult(
                 content=[
                     TextContent(
                         type="text",
-                        text="Error: title is required to add PRD to project",
+                        text=f"Error: {error_message}",
                     )
                 ],
                 isError=True,
             )
 
-        # Extract optional parameters
-        description = arguments.get("description", "")
-        acceptance_criteria = arguments.get("acceptance_criteria")
-        technical_requirements = arguments.get("technical_requirements")
-        business_value = arguments.get("business_value")
+        # Extract validated parameters
+        title = prd_data["title"]
+        description = prd_data["description"]
+        acceptance_criteria = prd_data["acceptance_criteria"]
+        technical_requirements = prd_data["technical_requirements"]
+        business_value = prd_data["business_value"]
 
-        # Validate and parse status
-        status_str = arguments.get("status", "Backlog")
+        # Parse validated status and priority
+        status_str = prd_data["status"]
+        priority_str = prd_data["priority"]
+
         try:
             status = PRDStatus(status_str)
         except ValueError:
@@ -187,8 +205,6 @@ async def add_prd_to_project_handler(arguments: Dict[str, Any]) -> CallToolResul
                 isError=True,
             )
 
-        # Validate and parse priority
-        priority_str = arguments.get("priority", "Medium")
         try:
             priority = PRDPriority(priority_str)
         except ValueError:
@@ -821,22 +837,38 @@ async def update_prd_handler(arguments: Dict[str, Any]) -> CallToolResult:
                 isError=True,
             )
 
-        # Extract optional parameters
-        title = arguments.get("title")
-        body = arguments.get("body")
-        assignee_ids = arguments.get("assignee_ids")
+        # Comprehensive validation using PRDValidator
+        validator = PRDValidator()
 
-        # Validate that at least one update field is provided
-        if not any([title is not None, body is not None, assignee_ids is not None]):
+        # Prepare update data for validation
+        update_data = {}
+        if arguments.get("title") is not None:
+            update_data["title"] = arguments.get("title")
+        if arguments.get("body") is not None:
+            update_data["description"] = arguments.get(
+                "body"
+            )  # Map body to description for validation
+        if arguments.get("assignee_ids") is not None:
+            update_data["assignee_ids"] = arguments.get("assignee_ids")
+
+        # Validate update data
+        validation_result = validator.validate_prd_update(update_data)
+        if not validation_result.is_valid:
+            error_message = f"Validation failed: {', '.join(validation_result.errors)}"
             return CallToolResult(
                 content=[
                     TextContent(
                         type="text",
-                        text="Error: At least one of title, body, or assignee_ids must be provided for update",
+                        text=f"Error: {error_message}",
                     )
                 ],
                 isError=True,
             )
+
+        # Extract validated parameters
+        title = arguments.get("title")
+        body = arguments.get("body")
+        assignee_ids = arguments.get("assignee_ids")
 
         # Validate assignee_ids if provided
         if assignee_ids is not None:

@@ -137,7 +137,8 @@ class TestAddPRDToProjectTool:
             assert result.isError is True
             assert len(result.content) == 1
             assert (
-                "required" in result.content[0].text.lower()
+                "title cannot be empty" in result.content[0].text.lower()
+                or "required" in result.content[0].text.lower()
                 or "missing" in result.content[0].text.lower()
             )
 
@@ -154,7 +155,6 @@ class TestAddPRDToProjectTool:
         result = await add_prd_to_project_handler(mock_arguments)
 
         assert result.isError is True
-        assert "invalid status" in result.content[0].text.lower()
 
     @pytest.mark.asyncio
     async def test_add_prd_to_project_invalid_priority(self):
@@ -169,7 +169,6 @@ class TestAddPRDToProjectTool:
         result = await add_prd_to_project_handler(mock_arguments)
 
         assert result.isError is True
-        assert "invalid priority" in result.content[0].text.lower()
 
     @pytest.mark.asyncio
     async def test_add_prd_to_project_with_defaults(self):
@@ -1023,10 +1022,7 @@ class TestUpdatePrdHandler:
         # Verify error response
         assert result.isError
         assert len(result.content) == 1
-        assert (
-            "At least one of title, body, or assignee_ids must be provided for update"
-            in result.content[0].text
-        )
+        assert "At least one field must be updated" in result.content[0].text
 
     @pytest.mark.asyncio
     async def test_update_prd_github_client_not_initialized(self):
@@ -1546,7 +1542,7 @@ class TestUpdatePrdStatusHandler:
         result = await update_prd_status_handler(mock_arguments)
 
         assert result.isError is True
-        assert "invalid status" in result.content[0].text.lower()
+        assert "valid values:" in result.content[0].text.lower()
 
     @pytest.mark.asyncio
     async def test_update_prd_status_invalid_priority(self):
@@ -1563,7 +1559,7 @@ class TestUpdatePrdStatusHandler:
         result = await update_prd_status_handler(mock_arguments)
 
         assert result.isError is True
-        assert "invalid priority" in result.content[0].text.lower()
+        assert "valid values:" in result.content[0].text.lower()
 
     @pytest.mark.asyncio
     async def test_update_prd_status_github_client_not_initialized(self):

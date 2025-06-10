@@ -230,7 +230,7 @@ async def create_task_handler(arguments: Dict[str, Any]) -> CallToolResult:
             estimated_hours=estimated_hours,
         )
 
-        # Build and execute GraphQL mutation
+        # Build and execute GraphQL mutation to create task
         mutation = _build_add_task_mutation(project_id, title, body)
 
         try:
@@ -289,6 +289,13 @@ async def create_task_handler(arguments: Dict[str, Any]) -> CallToolResult:
         content = project_item.get("content", {})
         task_title = content.get("title", title)
         created_at = content.get("createdAt", "")
+
+        # TODO: Set Parent PRD field value after task creation
+        # For now, tasks rely on description-based Parent PRD tracking
+        # Future enhancement: Set proper project field for Parent PRD
+        logger.info(
+            f"Task created: {task_id}, parent PRD stored in description: {parent_prd_id}"
+        )
 
         # Format success response
         result_text = f"""Task created successfully!
@@ -359,7 +366,11 @@ async def list_tasks_handler(arguments: Dict[str, Any]) -> CallToolResult:
             )
 
         # Extract optional parameters
-        parent_prd_id = arguments.get("parent_prd_id", "").strip() or None
+        parent_prd_id = arguments.get("parent_prd_id")
+        if parent_prd_id is not None:
+            parent_prd_id = parent_prd_id.strip() or None
+        else:
+            parent_prd_id = None
         first = arguments.get("first", 25)
         after = arguments.get("after")
 
@@ -394,9 +405,22 @@ async def list_tasks_handler(arguments: Dict[str, Any]) -> CallToolResult:
             )
 
         # Build and execute query
+        # Note: When filtering by parent_prd_id, we fetch more items to compensate for client-side filtering
+        # since GitHub Projects v2 API doesn't support GraphQL-level field filtering
         query_builder = ProjectQueryBuilder()
+        actual_first = first
+        if parent_prd_id and first and first < 50:
+            # Increase fetch size to improve filtering results when parent PRD filter is specified
+            actual_first = min(first * 3, 100)  # Triple the size but cap at 100
+            logger.info(
+                f"Increased fetch size from {first} to {actual_first} for PRD filtering"
+            )
+
         query = query_builder.list_tasks_in_project(
-            project_id=project_id, parent_prd_id=parent_prd_id, first=first, after=after
+            project_id=project_id,
+            parent_prd_id=parent_prd_id,
+            first=actual_first,
+            after=after,
         )
 
         logger.info(
@@ -479,6 +503,19 @@ async def list_tasks_handler(arguments: Dict[str, Any]) -> CallToolResult:
             # Check if this item is a task by looking for Parent PRD field
             item_parent_prd_id = field_values.get("Parent PRD")
 
+            # Fallback: Check description for Parent PRD if field is not set
+            if not item_parent_prd_id:
+                # Look for "Parent PRD: PVTI_xxxx" pattern in content body
+                content_body = content.get("body", "")
+                if content_body:
+                    import re
+
+                    prd_match = re.search(
+                        r"\*\*Parent PRD:\*\*\s+(PVTI_\w+)", content_body
+                    )
+                    if prd_match:
+                        item_parent_prd_id = prd_match.group(1)
+
             # Apply parent PRD filter if specified
             if parent_prd_id and item_parent_prd_id != parent_prd_id:
                 continue
@@ -533,6 +570,10 @@ async def list_tasks_handler(arguments: Dict[str, Any]) -> CallToolResult:
                             "additional_info": additional_info,
                         }
                     )
+
+                    # Limit results to originally requested amount when we fetched more for filtering
+                    if parent_prd_id and actual_first != first and len(tasks) >= first:
+                        break
 
         # Build response text
         filter_text = f" (Parent PRD: {parent_prd_id})" if parent_prd_id else ""
