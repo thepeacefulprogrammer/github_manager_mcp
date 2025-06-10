@@ -7,14 +7,15 @@ filters, date ranges, and result sorting.
 """
 
 import logging
-from typing import Any, Dict, List, Optional
 from datetime import datetime, timezone
+from typing import Any, Dict, List, Optional
 
-from mcp.types import Tool, TextContent, CallToolResult
+from mcp.types import CallToolResult, TextContent, Tool
+
 from ..github_client import GitHubClient
 from ..utils.project_search import (
-    ProjectSearchManager,
     ProjectSearchFilter,
+    ProjectSearchManager,
     ProjectSearchQueryBuilder,
 )
 

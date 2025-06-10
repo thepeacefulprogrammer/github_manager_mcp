@@ -11,9 +11,9 @@ Provides comprehensive search functionality for GitHub Projects v2 including:
 
 import logging
 import time
-from typing import List, Dict, Any, Optional, Union
+from dataclasses import asdict, dataclass
 from datetime import datetime, timezone
-from dataclasses import dataclass, asdict
+from typing import Any, Dict, List, Optional, Union
 
 logger = logging.getLogger(__name__)
 
