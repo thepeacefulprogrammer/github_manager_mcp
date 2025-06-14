@@ -315,7 +315,7 @@ We welcome contributions! Please see our [Contributing Guide](CONTRIBUTING.md) f
 - 🐛 [Report Bug](https://github.com/thepeacefulprogrammer/github_manager_mcp/issues)
 - 💡 [Request Feature](https://github.com/thepeacefulprogrammer/github_manager_mcp/issues)
 - 💬 [Discussions](https://github.com/thepeacefulprogrammer/github_manager_mcp/discussions)
-- 📧 Email: [your-email@example.com]
+- 📧 Email: [randy.herritt@gmail.com]
 
 ---
 
